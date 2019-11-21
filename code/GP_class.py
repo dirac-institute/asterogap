@@ -5,7 +5,8 @@ import emcee
 import scipy.stats
 import pandas as pd
 
-class GPFit():
+
+class GPFit:
     def __init__(self, time_stamps, flux, flux_error, kernel_long):
         self.time = time_stamps
         self.flux = flux
@@ -24,22 +25,33 @@ class GPFit():
         mean_flux = np.mean(self.flux)
 
         # kernel1: long-term phase change
-        log_amp_k1 = np.log(self.flux.max()-self.flux.min())
-        log_metric = np.log(5**2)
+        log_amp_k1 = np.log(self.flux.max() - self.flux.min())
+        log_metric = np.log(5 ** 2)
 
         # kernel2: short-term periodic
-        log_amp_k2 = np.log(self.flux.max()-self.flux.min())
-        gamma = 10 #~10 nornal gamma
+        log_amp_k2 = np.log(self.flux.max() - self.flux.min())
+        gamma = 10  # ~10 nornal gamma
         log_period = 0
 
         if self.kernel_long:
-            parameters = {"mean": mean_flux, "log_amp_k1": log_amp_k1, "log_metric": log_metric, "log_amp_k2": log_amp_k2, "log_gamma": log_gamma,"log_period": log_period}
+            parameters = {
+                "mean": mean_flux,
+                "log_amp_k1": log_amp_k1,
+                "log_metric": log_metric,
+                "log_amp_k2": log_amp_k2,
+                "gamma": gamma,
+                "log_period": log_period,
+            }
         else:
-            parameters = {"mean": mean_flux, "log_amp_k2": log_amp_k2, "gamma": gamma,"log_period": log_period}
+            parameters = {
+                "mean": mean_flux,
+                "log_amp_k2": log_amp_k2,
+                "gamma": gamma,
+                "log_period": log_period,
+            }
 
         self.params = parameters
         return
-
 
     def set_walker_param_matrix(self, nwalkers):
         """Creates a matrix of starting parameters for every walker."""
@@ -47,11 +59,13 @@ class GPFit():
         if self.params is not None:
             # create an array of all parameter values
             p_start = np.array(list(self.params.values()))
-            cov_matrix = np.sqrt(np.diag(p_start)**2)
-            p0 = np.random.multivariate_normal(mean=p_start, cov=cov_matrix, size=(nwalkers))
+            cov_matrix = np.sqrt(np.diag(p_start) ** 2)
+            p0 = np.random.multivariate_normal(
+                mean=p_start, cov=cov_matrix, size=(nwalkers)
+            )
 
             # randomly distributed starting period values from ~1hr to ~24hrs
-            p0[:,-1] = np.random.normal(size=nwalkers)*0.5 + np.log(4/24.)
+            p0[:, -1] = np.random.normal(size=nwalkers) * 0.5 + np.log(4 / 24.0)
 
             print(p0[:, -2])
 
@@ -66,12 +80,18 @@ class GPFit():
         """Sets up the Gaussian Process Kernel that is needed for george."""
 
         if self.kernel_long:
-            k1 = np.exp(self.params["log_amp_k1"]) * george.kernels.ExpSquaredKernel(metric=np.exp(self.params["log_metric"]))
+            k1 = np.exp(self.params["log_amp_k1"]) * george.kernels.ExpSquaredKernel(
+                metric=np.exp(self.params["log_metric"])
+            )
 
-        k2 = np.exp(self.params["log_amp_k2"]) * george.kernels.ExpSine2Kernel(gamma=(self.params["gamma"]), log_period=self.params["log_period"])
+        k2 = np.exp(self.params["log_amp_k2"]) * george.kernels.ExpSine2Kernel(
+            gamma=(self.params["gamma"]), log_period=self.params["log_period"]
+        )
 
-        if self.kernel_long: kernel = k1*k2
-        else: kernel = k2
+        if self.kernel_long:
+            kernel = k1 * k2
+        else:
+            kernel = k2
 
         gp = george.GP(kernel, fit_mean=True, mean=self.params["mean"])
         gp.compute(self.time, self.flux_err)
@@ -83,10 +103,16 @@ class GPFit():
     def run_emcee(self, nwalkers, niter, threads, burn_in):
         """Runs emcee's mcmc code."""
 
-        ndim = self.gp.vector_size # is 4 if not including longterm kernel
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, post_lnlikelihood, args=[self.gp, self.time, self.flux, self.flux_err], threads=threads)
+        ndim = self.gp.vector_size  # is 4 if not including longterm kernel
+        sampler = emcee.EnsembleSampler(
+            nwalkers,
+            ndim,
+            post_lnlikelihood,
+            args=[self.gp, self.time, self.flux, self.flux_err],
+            threads=threads,
+        )
 
-        #run steps for a burn-in
+        # run steps for a burn-in
         state = sampler.run_mcmc(self.walker_params, burn_in)
         sampler.reset()
         sampler.run_mcmc(state[0], niter)
@@ -129,20 +155,29 @@ def prior(params):
         sum of all log priors (-inf if a parameter is out of range)
 
     """
-    #TODO: Improve documentation for prior ranges
+    # TODO: Improve documentation for prior ranges
 
     p_mean = scipy.stats.norm(1, 0.5).logpdf(params[0])
 
-    if len(params)==6:
+    if len(params) == 6:
 
         p_log_amp_k1 = scipy.stats.norm(np.log(2), np.log(10)).logpdf(params[1])
         p_log_metric = scipy.stats.norm(np.log(100), np.log(10)).logpdf((params[2]))
 
         p_log_amp_k2 = scipy.stats.norm(np.log(2), np.log(2)).logpdf(params[3])
         p_log_gamma = scipy.stats.norm(np.log(10), np.log(2)).logpdf(np.log(params[4]))
-        p_log_period = scipy.stats.norm(np.log(4./24.), (12./24.)).logpdf(params[5])
+        p_log_period = scipy.stats.norm(np.log(4.0 / 24.0), (12.0 / 24.0)).logpdf(
+            params[5]
+        )
 
-        sum_log_prior =  p_mean + p_log_amp_k1 + p_log_metric + p_log_amp_k2 + p_log_gamma + p_log_period
+        sum_log_prior = (
+            p_mean
+            + p_log_amp_k1
+            + p_log_metric
+            + p_log_amp_k2
+            + p_log_gamma
+            + p_log_period
+        )
 
     else:
 
@@ -150,10 +185,11 @@ def prior(params):
         p_log_gamma = scipy.stats.norm(np.log(10), np.log(2)).logpdf(np.log(params[2]))
         print(params[2])
         print(p_log_gamma)
-        p_log_period = scipy.stats.norm(np.log(4./24.), (12./24.)).logpdf(params[3])
+        p_log_period = scipy.stats.norm(np.log(4.0 / 24.0), (12.0 / 24.0)).logpdf(
+            params[3]
+        )
 
-        sum_log_prior =  p_mean + p_log_amp_k2 + p_log_gamma + p_log_period
-
+        sum_log_prior = p_mean + p_log_amp_k2 + p_log_gamma + p_log_period
 
     if np.isnan(sum_log_prior) == True:
         return -np.inf
@@ -162,16 +198,16 @@ def prior(params):
 
 
 def logl(params, gp, tsample, fsample, flux_err):
-     # compute lnlikelihood based on given parameters
-     gp.set_parameter_vector(params)
+    # compute lnlikelihood based on given parameters
+    gp.set_parameter_vector(params)
 
-     try:
-         gp.compute(tsample, flux_err)
-         lnlike = gp.lnlikelihood(fsample)
-     except np.linalg.LinAlgError:
-         lnlike = -1e25
+    try:
+        gp.compute(tsample, flux_err)
+        lnlike = gp.lnlikelihood(fsample)
+    except np.linalg.LinAlgError:
+        lnlike = -1e25
 
-     return lnlike
+    return lnlike
 
 
 def post_lnlikelihood(params, gp, tsample, fsample, flux_err):
@@ -202,7 +238,7 @@ def post_lnlikelihood(params, gp, tsample, fsample, flux_err):
 
     try:
         lnlike = logl(params, gp, tsample, fsample, flux_err)
-        ln_likelihood = lnlike+log_prior
+        ln_likelihood = lnlike + log_prior
 
     except np.linalg.linalg.LinAlgError:
         ln_likelihood = -1e25
