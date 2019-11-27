@@ -21,9 +21,9 @@ def read_data(filename, datadir="./", col=(0, 1, 2), whitespace=False):
 
     data = pd.read_csv(datadir + filename, header=None, delim_whitespace=whitespace)
 
-    tsample = data[col[0]]
-    fsample = data[col[1]]
-    flux_err = data[col[2]]
+    tsample = data[col[0]].to_numpy()
+    fsample = data[col[1]].to_numpy()
+    flux_err = data[col[2]].to_numpy()
 
     return tsample, fsample, flux_err
 
