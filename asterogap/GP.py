@@ -1,9 +1,7 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import george
 import emcee
 import scipy.stats
-import pandas as pd
 
 
 class GPFit:
@@ -157,18 +155,16 @@ def prior(params):
     """
     # TODO: Improve documentation for prior ranges
 
-    p_mean = scipy.stats.norm(1, 0.5).logpdf(params[0])
-
     if len(params) == 6:
+
+        p_mean = scipy.stats.norm(1, 0.5).logpdf(params[0])
 
         p_log_amp_k1 = scipy.stats.norm(np.log(2), np.log(10)).logpdf(params[1])
         p_log_metric = scipy.stats.norm(np.log(100), np.log(10)).logpdf((params[2]))
 
         p_log_amp_k2 = scipy.stats.norm(np.log(2), np.log(2)).logpdf(params[3])
         p_log_gamma = scipy.stats.norm(np.log(10), np.log(2)).logpdf(np.log(params[4]))
-        p_log_period = scipy.stats.norm(np.log(4.0 / 24.0), (12.0 / 24.0)).logpdf(
-            params[5]
-        )
+        p_log_period = scipy.stats.norm(np.log(4.0 / 24.0), (12.0 / 24.0)).logpdf(params[5])
 
         sum_log_prior = (
             p_mean
@@ -181,17 +177,15 @@ def prior(params):
 
     else:
 
+        p_mean = scipy.stats.norm(1, 0.5).logpdf(params[0])
+
         p_log_amp_k2 = scipy.stats.norm(np.log(2), np.log(2)).logpdf(params[1])
         p_log_gamma = scipy.stats.norm(np.log(10), np.log(2)).logpdf(np.log(params[2]))
-        print(params[2])
-        print(p_log_gamma)
-        p_log_period = scipy.stats.norm(np.log(4.0 / 24.0), (12.0 / 24.0)).logpdf(
-            params[3]
-        )
+        p_log_period = scipy.stats.norm(np.log(4.0 / 24.0), (12.0 / 24.0)).logpdf(params[3])
 
         sum_log_prior = p_mean + p_log_amp_k2 + p_log_gamma + p_log_period
 
-    if np.isnan(sum_log_prior) == True:
+    if np.isnan(sum_log_prior) is True:
         return -np.inf
 
     return sum_log_prior
@@ -233,7 +227,7 @@ def post_lnlikelihood(params, gp, tsample, fsample, flux_err):
     log_prior = prior(params)
 
     # return -inf if parameters are outside the priors
-    if np.isneginf(log_prior) == True:
+    if np.isneginf(log_prior) is True:
         return -np.inf
 
     try:
