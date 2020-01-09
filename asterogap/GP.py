@@ -101,7 +101,7 @@ class GPFit:
     def run_emcee(self, nwalkers, niter, threads, burn_in):
         """Runs emcee's mcmc code."""
 
-        ndim = self.gp.vector_size  # is 4 if not including longterm kernel
+        ndim = self.gp.vector_size  #ndim is 4 if not including longterm kernel
         sampler = emcee.EnsembleSampler(
             nwalkers,
             ndim,
@@ -192,12 +192,16 @@ def prior(params):
 
 
 def logl(params, gp, tsample, fsample, flux_err):
-    # compute lnlikelihood based on given parameters
+    """
+    Compute log likelihood based on given parameters.
+    """
+
     gp.set_parameter_vector(params)
 
     try:
         gp.compute(tsample, flux_err)
         lnlike = gp.lnlikelihood(fsample)
+        
     except np.linalg.LinAlgError:
         lnlike = -1e25
 
