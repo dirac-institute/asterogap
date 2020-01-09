@@ -1,1 +1,10 @@
 # List required packages in this file, one per line.
+numpy
+matplotlib
+george
+emcee
+scipy
+pandas
+argparse
+h5py
+corner
