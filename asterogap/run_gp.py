@@ -1,29 +1,37 @@
+import argparse
+import textwrap
+
+import pandas as pd
+import h5py
+
+# from plotting import plot_mcmc_sampling_results
+from .GP import GPFit
+
 import os
 
 # TODO: is this still needed?
 os.environ["MKL_NUM_THREADS"] = "3"
 
-import argparse
-import textwrap
 
-import numpy as np
-import pandas as pd
-import h5py
-
-# from plotting import plot_mcmc_sampling_results
-from GP_class import GPFit
-
-
-def read_data(filename, datadir="./", col=(0, 1, 2), whitespace=False):
+def read_data(filename, datadir="./", cols=None, whitespace=False):
     """
     Read in light curve data from asteroid.
     """
 
-    data = pd.read_csv(datadir + filename, header=None, delim_whitespace=whitespace)
+    if cols is None:
+        header = None
+        cols = [0, 1, 2]
 
-    tsample = data[col[0]]
-    fsample = data[col[1]]
-    flux_err = data[col[2]]
+    else:
+        header = 0
+
+    data = pd.read_csv(datadir + filename, delim_whitespace=whitespace, header=header)
+
+    print("columns = " + str(cols))
+
+    tsample = data[cols[0]]
+    fsample = data[cols[1]]
+    flux_err = data[cols[2]]
 
     return tsample, fsample, flux_err
 
@@ -55,6 +63,8 @@ def main():
     print("\nreading in data")
     time, flux, flux_err = read_data(filename, datadir, cols, whitespace)
 
+    if kernel_long:
+        print("\nincluding long-term kernel")
     asteroid = GPFit(time, flux, flux_err, kernel_long)
 
     print("\nsetting kernel")
@@ -74,7 +84,7 @@ def main():
 
 
 if __name__ == "__main__":
-    ### DEFINE PARSER FOR COMMAND LINE ARGUMENTS
+    # DEFINE PARSER FOR COMMAND LINE ARGUMENTS
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=" ",  # Bayesian QPO searches for burst light curves.",
@@ -110,7 +120,6 @@ if __name__ == "__main__":
         ),
     )
 
-    ### other arguments
     parser.add_argument(
         "-f",
         "--filename",
@@ -166,7 +175,7 @@ if __name__ == "__main__":
         dest="whitespace",
         required=False,
         default=False,
-        help="The delimeter for the input file, assumed to be whitespace.",
+        help="The delimeter for the input file, assumed not to be whitespace.",
     )
 
     parser.add_argument(
@@ -191,11 +200,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "-c",
         "--columns",
+        nargs=3,
+        type=str,
         action="store",
         dest="columns",
         required=False,
-        default=(0, 1, 2),
-        help="Specify which columns to use to extract time, flux, and flux error.",
+        help="Specify which column names to use to extract time, flux, and flux error. Must be a string.",
     )
 
     clargs = parser.parse_args()
@@ -209,6 +219,5 @@ if __name__ == "__main__":
     burn_in = clargs.burn_in
     kernel_long = clargs.kernel
     cols = clargs.columns
-    print(clargs.kernel)
 
     main()

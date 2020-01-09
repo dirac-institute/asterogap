@@ -2,13 +2,12 @@ import argparse
 import textwrap
 
 import numpy as np
-import george
 import corner
 import matplotlib.pyplot as plt
 import h5py
 
 
-def calc_prob(data, period=None, p_range=None, bins=100000, width=0.1, plot=False):
+def calc_prob(data, nperiods=1, period=None, p_range=None, bins=1000, width=0.1):
     """
     NOTE: Should work for both single-kernel and double-kernel results
     Calculated the probability of an interval of periods.
@@ -17,6 +16,9 @@ def calc_prob(data, period=None, p_range=None, bins=100000, width=0.1, plot=Fals
     ----------
     data : numpy.ndarray
         Results pulled from hdf5 file. Assumes the shape to be [nwalkers, iterations, parameters].
+
+    nperiods : int
+        The number of top periods to look for.
 
     period : float
         The period (in hours) around which to calculate the probability.
@@ -31,13 +33,10 @@ def calc_prob(data, period=None, p_range=None, bins=100000, width=0.1, plot=Fals
         The distance on either side of the period over which will be integrated. Width will be ignored
         if p_range is specified.
 
-    plot : bool, default False
-        Returns a plot of the area of the posterior distribution being integrated.
-
     Returns
     -------
 
-    prob : numpy.float64
+    probs : numpy.float64
         Total integrated area (probability) of the posterior period distribution within the edges listed.
 
     edges : list
@@ -48,44 +47,42 @@ def calc_prob(data, period=None, p_range=None, bins=100000, width=0.1, plot=Fals
 
     flat_data = data.reshape(data.shape[0] * data.shape[1], data.shape[2])
 
-    h, bins = np.histogram(flat_data[:, -1], bins=bins, density=True,)
+    h, bins = np.histogram(flat_data[:, -1], bins=bins, density=True)
 
-    if period:
+    # find the period(s) of hmax
+    top_h = -np.sort(-h)[0:nperiods]
 
-        edges = [period - width, period + width]
-        idx = np.searchsorted(bins, edges, side="left")
-        h_i = np.sum(h[idx[0] : idx[1]])
+    # collect the indicies for these periods
+    indices = []
+    for i, v in enumerate(top_h):
+        ind = np.where(h == top_h[i])
+        indices.append(ind[0][0])
 
-    elif p_range:
+    indices = np.array(indices)
 
-        edges = p_range
-        idx = np.searchsorted(bins, edges, side="left")
-        h_i = np.sum(h[idx[0] : idx[1]])
+    periods = bins[indices]
 
-    else:
-        # find the period of hmax
-        period = bins[np.abs(h - h.max()).argmin()]
+    edges = [periods-width, periods+width]
 
-        edges = [period - width, period + width]
-        idx = np.searchsorted(bins, edges, side="left")
-        h_i = np.sum(h[idx[0] : idx[1]])
+    idxs = np.searchsorted(bins, edges, side="left")
+
+    h_sums = []
+
+    for i in np.arange(idxs.shape[1]):
+        h_sum = np.sum(h[idxs[:, i][0]: idxs[:, i][1]])
+        h_sums.append(h_sum)
+
+    h_sums = np.array(h_sums)
 
     dx = bins[1] - bins[0]
+    probs = h_sums * dx
 
-    prob = h_i * dx
-
-    if plot:
-        fig, (ax, bx) = plt.subplots(1, 2, figsize=(10, 5))
-        ax.bar(bins[idx[0] : idx[1]], h[idx[0] : idx[1]], width=dx)
-
-        bx.bar(bins[0:-1], h, width=dx)
-
-    return prob, edges
+    return probs, edges
 
 
 def plot_corner(data, true_period=None, colours=None, zoom=False, trim=None, fig=None):
     """
-    NOTE: Should work for both single-kernel and double-kernel results
+    NOTE: Should work for both single-kernel and double-kernel results.
     Plot a corner plot showing the projections of a data set in multi-dimesional space,
     with the different dimensions corresponding to the different kernel parameters.
 
@@ -119,7 +116,7 @@ def plot_corner(data, true_period=None, colours=None, zoom=False, trim=None, fig
 
     """
 
-    if colours == None:
+    if colours is None:
         colours = ["#000000", "#0072B2", "#E69F00", "#009E73", "#F0E442"]
 
     if trim:
@@ -147,14 +144,18 @@ def plot_corner(data, true_period=None, colours=None, zoom=False, trim=None, fig
         flat_data = data.reshape(data.shape[0] * data.shape[1], data.shape[2])
 
     if zoom:
-        prob, edges = calc_prob(data, period=true_period)
+        prob, edges = calc_prob(data, period=true_period, )
 
-        if prob == 0:
+        print(prob, edges)
+
+        if np.any(prob == 0):
             raise Exception(
                 "WARNING: Probability around period is 0 and therefore cannot display a valid corner plot."
             )
 
         flat_data = data[(data[:, :, -1] > edges[0]) & (data[:, :, -1] < edges[1])]
+
+        print(flat_data)
 
     # print(data.shape[2])
     if data.shape[2] == 6:
@@ -294,14 +295,14 @@ def run_lsp(
         n_terms [1,2,3].
     """
 
-    if colours == None:
+    if colours is None:
         colours = ["#000000", "#0072B2", "#E69F00", "#009E73", "#F0E442"]
 
     from scipy.signal import argrelextrema
 
     # get l-s best period estimate
     from lombscargle import make_lsp
-    from astropy.timeseries import LombScargle
+    # from astropy.timeseries import LombScargle
 
     if data is not None:
         lower, upper = np.percentile(data[:, :, -1], [5, 95])
@@ -310,7 +311,7 @@ def run_lsp(
     lsp_periods = np.array([])
 
     if plot:
-        fig, ax = plt.subplots(3, 2, figsize=(10, 10))
+        fig, ax = plt.subplots(3, 2, figsize=(10, 10), squeeze=False)
 
     for i in np.arange(3):
         freq, power = make_lsp(time, flux, flux_err, p_max=5.0, nterms=(i + 1))
@@ -329,7 +330,6 @@ def run_lsp(
 
         new_freq = best_freqs[0]
         new_period = 1.0 / new_freq
-        new_log_period = np.log(1.0 / new_freq)
 
         if plot:
 
@@ -394,6 +394,153 @@ def run_lsp(
     return lsp_periods
 
 
+def plot_posterior(data, true_period=None, legend=True, colours=None):
+    """
+    NOTE: Should work for both single-kernel and double-kernel results
+    Plot a histogram of the posterior distribution, showing the full distribution,
+    the 5th-95th percentile of the distribution, and a zoomed-in view of
+    the region with the highest probability (or region around the period if specified).
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        Results pulled from hdf5 file. Assumes the shape to be [nwalkers, iterations, parameters].
+
+    true_period : float
+        The period (in hours) around which to calculate the probability.
+
+    legend : bool, default True
+        If True, include a legend in the plot
+
+    colours : [str, str, str]
+        List of (up to) three colours. First colour is used for the data, the second
+        colour for the true underlying data, the third for the models.
+
+    Returns
+    -------
+
+    ax : matplotlib.Axes object
+        The object with the plot
+
+
+    """
+
+    if colours is None:
+        colours = ["black", "#0072B2", "#E69F00", "#009E73", "#F0E442"]
+
+    fig, ax = plt.subplots(3, 2, figsize=(10, 15))
+
+    # plot the full histogram of period results
+    flat_data = data.reshape(data.shape[0] * data.shape[1], data.shape[2])
+
+    ax[0, 0].hist(flat_data[:, -1], bins="auto", density=True, color=colours[0], alpha=0.3)
+
+    if true_period:
+        ylim = ax[0, 0].get_ylim()
+        ax[0, 0].vlines(
+            x=true_period,
+            ymin=ylim[0],
+            ymax=ylim[-1],
+            lw=1,
+            color=colours[1],
+            linestyle="dashed",
+            label="true period : %.5f" % true_period,
+        )
+
+    ax[0, 0].set_xlabel("Period in hours")
+    ax[0, 0].set_ylabel("Probability")
+    ax[0, 0].set_ylim(ax[0, 0].get_ylim())
+    ax[0, 0].set_title("Posteriod Period Distibution")
+
+    # plot the 5th-95th percentile
+    lower, upper = np.percentile(data[:, :, -1], [5, 95])
+    masked_data = data[(data[:, :, -1] > lower) & (data[:, :, -1] < upper)]
+
+    ax[0, 1].hist(masked_data[:, -1], bins="auto", density=True, color=colours[0], alpha=0.3)
+
+    if true_period:
+        ylim = ax[0, 1].get_ylim()
+        ax[0, 1].vlines(
+            x=true_period,
+            ymin=ylim[0],
+            ymax=ylim[-1],
+            lw=1,
+            color=colours[1],
+            linestyle="dashed",
+            label="true period : %.5f" % true_period,
+        )
+
+    ax[0, 1].set_title("5th - 95th Percentile")
+    ax[0, 1].set_xlabel("Period in hours")
+    ax[0, 1].set_ylabel("Probability")
+    ax[0, 1].set_ylim(ax[0, 1].get_ylim())
+
+    # zoom in on the part of the graph that has the highest probability
+    probs, edges = calc_prob(data, 4, true_period, plot=False)
+
+    if not np.any(probs):
+        raise Exception(
+            "WARNING: Probability around period is 0 and therefore cannot display a valid corner plot."
+        )
+
+    best_periods = []
+
+    for i, v in enumerate(probs):
+        zoom_data = data[(data[:, :, -1] > edges[:][0][i]) & (data[:, :, -1] < edges[:][1][i])]
+
+        best_period = np.percentile(zoom_data[:, -1], 50)
+        best_periods.append(best_period)
+
+        ax[1+int(i/2), i % 2].hist(zoom_data[:, -1], bins="auto", density=True, color=colours[0], alpha=0.3)
+        ylim = ax[1+int(i/2), i % 2].get_ylim()
+        xlim = ax[1+int(i/2), i % 2].get_xlim()
+
+        if true_period:
+            ax[1+int(i/2), i % 2].vlines(
+                true_period,
+                0,
+                ylim[-1],
+                lw=1,
+                color=colours[1],
+                linestyle="dashed",
+                label="true period : %.5f" % true_period,
+            )
+            ax[1+int(i/2), i % 2].vlines(
+                best_period,
+                0,
+                ylim[-1],
+                lw=1,
+                color=colours[2],
+                linestyle="dashed",
+                label="best period : %.5f" % best_period,
+            )
+        else:
+            ax[1+int(i/2), i % 2].vlines(
+                best_period,
+                0,
+                ylim[-1],
+                lw=1,
+                color=colours[2],
+                linestyle="dashed",
+                label="best period : %.5f" % best_period,
+            )
+        ax[1+int(i/2), i % 2].set_title("Probability %.3f" % probs[i])
+        ax[1+int(i/2), i % 2].set_xlabel("Period in hours")
+        ax[1+int(i/2), i % 2].set_ylabel("Probability")
+        ax[1+int(i/2), i % 2].set_ylim(ylim)
+        ax[1+int(i/2), i % 2].set_xlim(xlim)
+
+        if legend:
+            if true_period:
+                ax[0, 0].legend()
+                ax[0, 1].legend()
+            ax[1+int(i/2), i % 2].legend()
+
+    plt.tight_layout()
+
+    return np.array(best_periods)
+
+
 def plot_folded_lightcurve(
     time,
     flux,
@@ -423,7 +570,7 @@ def plot_folded_lightcurve(
     flux_err : numpy.ndarray
         The flux uncertainties corresponding to the data.
 
-    period : float
+    period : array
         The period on which to fold **in hours**
 
     models : iterable of shape (model_time, numpy.ndarray of shape (nsamples, len(model_time)))
@@ -463,11 +610,12 @@ def plot_folded_lightcurve(
         colours = ["#000000", "#0072B2", "#E69F00", "#009E73", "#F0E442"]
 
     if ax is None:
-        fig, ax = plt.subplots(1, 1, figsize=(6, 4))
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 
     period_days = period / 24.0
 
     t0 = np.min(time)
+
     if models:
         t0 = np.min([t0, np.min(models[0])])
 
@@ -607,153 +755,13 @@ def plot_folded_lightcurve(
         ax.set_xlim(0, 2 * np.pi)
     else:
         ax.set_xlim(0, 1)
+    plt.tight_layout()
+
     return ax
 
 
-def plot_posterior(data, true_period=None, legend=True, colours=None):
-    """
-    NOTE: Should work for both single-kernel and double-kernel results
-    Plot a histogram of the posterior distribution, showing the full distribution,
-    the 5th-95th percentile of the distribution, and a zoomed-in view of
-    the region with the highest probability (or region around the period if specified).
-
-    Parameters
-    ----------
-    data : numpy.ndarray
-        Results pulled from hdf5 file. Assumes the shape to be [nwalkers, iterations, parameters].
-
-    true_period : float
-        The period (in hours) around which to calculate the probability.
-
-    legend : bool, default True
-        If True, include a legend in the plot
-
-    colours : [str, str, str]
-        List of (up to) three colours. First colour is used for the data, the second
-        colour for the true underlying data, the third for the models.
-
-    Returns
-    -------
-
-    ax : matplotlib.Axes object
-        The object with the plot
-
-
-    """
-
-    if colours is None:
-        colours = ["black", "#0072B2", "#E69F00", "#009E73", "#F0E442"]
-
-    fig, (ax, bx, cx) = plt.subplots(1, 3, figsize=(15, 4))
-
-    # plot the full histogram of period results
-    flat_data = data.reshape(data.shape[0] * data.shape[1], data.shape[2])
-
-    ax.hist(flat_data[:, -1], bins="auto", density=True, color=colours[0], alpha=0.3)
-
-    if true_period:
-        ylim = ax.get_ylim()
-        ax.vlines(
-            x=true_period,
-            ymin=y0,
-            ymax=ylim[-1],
-            lw=1,
-            color=colours[1],
-            linestyle="dashed",
-            label="true period : %.5f" % true_period,
-        )
-
-    ax.set_xlabel("Period in hours")
-    ax.set_ylabel("Probability")
-    ax.set_ylim(ax.get_ylim())
-    ax.set_title("Posteriod Period Distibution")
-
-    # plot the 5th-95th percentile
-    lower, upper = np.percentile(data[:, :, -1], [5, 95])
-    masked_data = data[(data[:, :, -1] > lower) & (data[:, :, -1] < upper)]
-
-    bx.hist(masked_data[:, -1], bins="auto", density=True, color=colours[0], alpha=0.3)
-
-    if true_period:
-        ylim = bx.get_ylim()
-        bx.vlines(
-            true_period,
-            0,
-            ylim[-1],
-            lw=1,
-            color=colours[1],
-            linestyle="dashed",
-            label="true period : %.5f" % true_period,
-        )
-
-    bx.set_title("5th - 95th Percentile")
-    bx.set_xlabel("Period in hours")
-    bx.set_ylabel("Probability")
-    bx.set_ylim(bx.get_ylim())
-
-    # zoom in on the part of the graph that has the highest probability
-    prob, edges = calc_prob(data, true_period, plot=False)
-
-    if prob == 0:
-        raise Exception(
-            "WARNING: Probability around period is 0 and therefore cannot display a valid corner plot."
-        )
-
-    zoom_data = data[(data[:, :, -1] > edges[0]) & (data[:, :, -1] < edges[1])]
-
-    best_period = np.percentile(zoom_data[:, -1], 50)
-
-    cx.hist(zoom_data[:, -1], bins="auto", density=True, color=colours[0], alpha=0.3)
-    ylim = cx.get_ylim()
-
-    if true_period:
-        cx.vlines(
-            true_period,
-            0,
-            ylim[-1],
-            lw=1,
-            color=colours[1],
-            linestyle="dashed",
-            label="true period : %.5f" % true_period,
-        )
-        cx.vlines(
-            best_period,
-            0,
-            ylim[-1],
-            lw=1,
-            color=colours[2],
-            linestyle="dashed",
-            label="best period : %.5f" % best_period,
-        )
-    else:
-        cx.vlines(
-            best_period,
-            0,
-            ylim[-1],
-            lw=1,
-            color=colours[2],
-            linestyle="dashed",
-            label="best period : %.5f" % best_period,
-        )
-    cx.set_title("Probability %.3f" % prob)
-    cx.set_xlabel("Period in hours")
-    cx.set_ylabel("Probability")
-    cx.set_ylim(ylim)
-
-    if legend:
-        if true_period:
-            ax.legend()
-            bx.legend()
-        cx.legend()
-
-    plt.tight_layout()
-    # plt.savefig(namestr + "_period_pdf.pdf", format="pdf")
-
-    return best_period
-
-
 def make_summary_plots(
-    filename, save_fig=False, true_period=None, true_lightcurve=None,
+    filename, save_fig=False, true_period=None, true_lightcurve=None
 ):
     """
     Plots and saves all the necessary plots you can get from an hdf5 results file.
@@ -787,51 +795,78 @@ def make_summary_plots(
         # convert period from log_days to hours
         data[:, :, -1] = np.exp(data[:, :, -1]) * 24.0
 
-        ###   LOMB-SCARGLE   ###
-        ### should be fully functional in both 4 and 6 dim, with period and without
-        lsp = run_lsp(
+        ###  LOMB-SCARGLE   ###
+        # should be fully functional in both 4 and 6 dim, with period and without
+        print("\nplotting lomb-scargle periodogram")
+        run_lsp(
             time, flux, flux_err, data, true_period, true_lightcurve, plot=True
         )
+
         if save_fig:
+            print("saving lomb-scargle periodogram")
             plt.savefig(filename.replace(".hdf5", "_lsp.pdf"), format="pdf")
 
         ###   TRACE PLOT   ###
-        ### should be fully functional in both 4 and 6 dim, with period and without
+        # should be fully functional in both 4 and 6 dim, with period and without
+        print("\nplotting trace plot")
         plot_trace(data, f.attrs["iterations"])
+
         if save_fig:
+            print("saving trace plot")
             plt.savefig(filename.replace(".hdf5", "_trace.pdf"), format="pdf")
 
         ###   CORNER PLOTS   ###
         ### should be fully functional in both 4 and 6 dim, with period and without
+        print("\nplotting corner plot")
         plot_corner(data, true_period)
+
         if save_fig:
+            print("saving corner plot")
             plt.savefig(filename.replace(".hdf5", "_corner.pdf"), format="pdf")
 
+        print("\nplotting trimmed corner plot")
         plot_corner(data, true_period, trim=[5, 95])
+
         if save_fig:
+            print("saving trimmed corner plot")
             plt.savefig(filename.replace(".hdf5", "_corner_5_95.pdf"), format="pdf")
 
+        print("\nplotting zoomed-in corner plot")
         plot_corner(data, true_period, zoom=True)
+
         if save_fig:
+            print("saving zoomed-in corner plot")
             plt.savefig(filename.replace(".hdf5", "_corner_zoom.pdf"), format="pdf")
 
         ###   POSTERIOR   ###
         ### should be fully functional in both 4 and 6 dim, with period and without
+        print("\nplotting posterior plot")
         best_period = plot_posterior(data, true_period)
+
         if save_fig:
+            print("saving posterior plot")
             plt.savefig(filename.replace(".hdf5", "_posterior.pdf"), format="pdf")
+
+        print("\nBEST PERIODS")
+        print(best_period)
 
         # ###   FOLDED LIGHTCURVE   ###
         ### should be fully functional in both 4 and 6 dim, with period and without
-        plot_folded_lightcurve(
-            time,
-            flux,
-            flux_err=flux_err,
-            legend=False,
-            period=best_period,
-            true_lightcurve=true_lightcurve,
-        )
+        print("\nplotting folded lightcurve")
+        fig, ax = plt.subplots(2, 2, figsize=(10, 10))
+
+        for i, v in enumerate(best_period):
+            plot_folded_lightcurve(
+                time,
+                flux,
+                flux_err=flux_err,
+                legend=False,
+                ax=ax[int(i/2), i % 2],
+                period=best_period[i],
+                true_lightcurve=true_lightcurve,
+            )
         if save_fig:
+            print("saving folded lightcurve")
             plt.savefig(filename.replace(".hdf5", "_folded.pdf"), format="pdf")
 
 
