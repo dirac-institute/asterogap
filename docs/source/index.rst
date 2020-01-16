@@ -6,6 +6,10 @@
 AsteroGaP Documentation
 =======================
 
+AsteroGaP (Asteroid Gaussian Processes) is a Bayesian-based Gaussian Process model that seeks to fit sparsely-sampled asteroid light curves.
+
+By utilizing a more flexible Gaussian Process framework for modeling asteroid light curves, we are able to represent light curves in a periodic but non-sinusoidal manner.
+
 .. toctree::
    :maxdepth: 2
 
