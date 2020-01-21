@@ -5,15 +5,17 @@ from ..run_gp import read_data
 
 
 def test_read_data():
+
+    
     filename = "test_data.csv"
-    datadir = "../../data/test_data/"
+    datadir = "data/test_data/"
 
     read_data(filename, datadir)
 
 
 def test_outputs():
     filename = "test_data.csv"
-    datadir = "../../data/test_data/"
+    datadir = "data/test_data/"
 
     time, flux, flux_err = read_data(filename, datadir)
 
@@ -28,7 +30,7 @@ def test_outputs():
 
 def test_read_data_fails_with_whitespace_data_in_wrong_format():
     filename = "test_data.csv"
-    datadir = "../../data/test_data/"
+    datadir = "data/test_data/"
 
     # figure out what error it fails with
     # for this case it's a KEY ERROR
