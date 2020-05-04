@@ -6,7 +6,6 @@ from ..run_gp import read_data
 
 def test_read_data():
 
-    
     filename = "test_data.csv"
     datadir = "data/test_data/"
 

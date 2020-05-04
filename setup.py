@@ -32,6 +32,7 @@ with open(path.join(here, 'requirements.txt')) as requirements_file:
     requirements = [line for line in requirements_file.read().splitlines()
                     if not line.startswith('#')]
 
+#######
 
 setup(
     name='asterogap',
@@ -39,8 +40,8 @@ setup(
     cmdclass=versioneer.get_cmdclass(),
     description="AsteroGaP (Asteroid Gaussian Processes) is a Bayesian-based Gaussian Process model that seeks to fit sparsely-sampled asteroid light curves.",
     long_description=readme,
-    author="UW DIRAC Institute",
-    author_email='dirac@uw.edu',
+    author="Christina Willecke Lindberg",
+    author_email='cwlind@jhu.edu',
     url='https://github.com/dirac-institute/asterogap',
     python_requires='>={}'.format('.'.join(str(n) for n in min_version)),
     packages=find_packages(exclude=['docs', 'tests']),

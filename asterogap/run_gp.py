@@ -5,7 +5,7 @@ import pandas as pd
 import h5py
 
 # from plotting import plot_mcmc_sampling_results
-from .GP import GPFit
+from GP import GPFit
 
 import os
 
@@ -64,7 +64,7 @@ def main():
     time, flux, flux_err = read_data(filename, datadir, cols, whitespace)
 
     if kernel_long:
-        print("\nincluding long-term kernel")
+        print("\nincluding long-term kernel\nit's log unif!")
     asteroid = GPFit(time, flux, flux_err, kernel_long)
 
     print("\nsetting kernel")

@@ -15,5 +15,7 @@ By utilizing a more flexible Gaussian Process framework for modeling asteroid li
 
    installation
    usage
+   AsteroGaP_Example_Notebook.ipynb
+   Prior_Plotting.ipynb
    release-history
    min_versions

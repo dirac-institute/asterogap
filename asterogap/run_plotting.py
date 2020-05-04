@@ -45,6 +45,7 @@ def calc_prob(data, nperiods=1, period=None, p_range=None, bins=1000, width=0.1)
 
     """
 
+
     flat_data = data.reshape(data.shape[0] * data.shape[1], data.shape[2])
 
     h, bins = np.histogram(flat_data[:, -1], bins=bins, density=True)
@@ -60,24 +61,24 @@ def calc_prob(data, nperiods=1, period=None, p_range=None, bins=1000, width=0.1)
 
     indices = np.array(indices)
 
-    periods = bins[indices]
-
-    edges = [periods-width, periods+width]
-
-    idxs = np.searchsorted(bins, edges, side="left")
-
-    h_sums = []
-
-    for i in np.arange(idxs.shape[1]):
-        h_sum = np.sum(h[idxs[:, i][0]: idxs[:, i][1]])
-        h_sums.append(h_sum)
-
-    h_sums = np.array(h_sums)
-
+    # find the width of the bins
     dx = bins[1] - bins[0]
-    probs = h_sums * dx
 
-    return probs, edges
+    periods = bins[indices] + dx/2. # add half the bin to center
+
+    edges = [periods - 0.25, periods+0.25]
+
+    prob_sum = []
+
+    for i, v in enumerate(edges[0]):
+        # find all the periods that fall within the defined edges
+        periods_where = flat_data[:,-1][np.where((flat_data[:,-1]>= edges[0][i]) & (flat_data[:,-1] <= edges[1][i]))]
+
+        # find the sum of the number of walkers within the edges and add to list
+        prob_sum.append(periods_where.shape[0]/flat_data.shape[0])
+
+    return prob_sum, edges
+
 
 
 def plot_corner(data, true_period=None, colours=None, zoom=False, trim=None, fig=None):
@@ -212,7 +213,7 @@ def plot_trace(data, iterations, colours=None):
     fig.subplots_adjust(wspace=0.5, hspace=0.3)
 
     if data.shape[2] == 6:
-        dims = ["mean", "log_amp", "log_metric", "log_amp_2", "log_gamma", "period"]
+        dims = ["mean", "log_amp_long", "log_metric", "log_amp_periodic", "log_gamma", "period"]
         axs = [ax[0, 0], ax[0, 1], ax[0, 2], ax[1, 0], ax[1, 1], ax[1, 2]]
 
     else:
@@ -450,7 +451,7 @@ def plot_posterior(data, true_period=None, legend=True, colours=None):
     ax[0, 0].set_xlabel("Period in hours")
     ax[0, 0].set_ylabel("Probability")
     ax[0, 0].set_ylim(ax[0, 0].get_ylim())
-    ax[0, 0].set_title("Posteriod Period Distibution")
+    ax[0, 0].set_title("Posterior Period Distibution")
 
     # plot the 5th-95th percentile
     lower, upper = np.percentile(data[:, :, -1], [5, 95])
@@ -476,7 +477,7 @@ def plot_posterior(data, true_period=None, legend=True, colours=None):
     ax[0, 1].set_ylim(ax[0, 1].get_ylim())
 
     # zoom in on the part of the graph that has the highest probability
-    probs, edges = calc_prob(data, 4, true_period, plot=False)
+    probs, edges = calc_prob(data, 4, true_period)
 
     if not np.any(probs):
         raise Exception(
