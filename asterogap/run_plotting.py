@@ -66,7 +66,7 @@ def calc_prob(data, nperiods=1, period=None, p_range=None, bins=1000, width=0.1)
 
     periods = bins[indices] + dx/2. # add half the bin to center
 
-    edges = [periods - 0.25, periods+0.25]
+    edges = [periods - width/2., periods + width/2.]
 
     prob_sum = []
 
@@ -299,100 +299,192 @@ def run_lsp(
     if colours is None:
         colours = ["#000000", "#0072B2", "#E69F00", "#009E73", "#F0E442"]
 
-    from scipy.signal import argrelextrema
+    # NEW LSP CODE
+    #---------------------
 
-    # get l-s best period estimate
-    from lombscargle import make_lsp
-    # from astropy.timeseries import LombScargle
+    from gatspy import periodic
 
     if data is not None:
         lower, upper = np.percentile(data[:, :, -1], [5, 95])
         masked_data = data[(data[:, :, -1] > lower) & (data[:, :, -1] < upper)]
 
-    lsp_periods = np.array([])
+
+    # set up 2term LSP model
+    model = periodic.LombScargle(Nterms=2)
+
+    max_period=60.0/24.0 # 2.5 days
+    # make sure the max period isn't longer than the time range of observations
+    big_period = np.min([max_period, (time.max() - time.min())])
+    min_period=1.0/24.0 # 1 hour
+
+    model.optimizer.period_range = (min_period, big_period)
+    model.optimizer.first_pass_coverage = 200
+
+    # add the obs data
+    model.fit(time, flux, flux_err)
+
+    # find the 5 best periods (in days)
+    best_periods = model.find_best_periods()
 
     if plot:
-        fig, ax = plt.subplots(3, 2, figsize=(10, 10), squeeze=False)
+        fig, ax = plt.subplots(len(best_periods)+1, figsize=(10, 4*(len(best_periods)+1)))
 
-    for i in np.arange(3):
-        freq, power = make_lsp(time, flux, flux_err, p_max=5.0, nterms=(i + 1))
+        # have range spanning the min period-1 hour (unless that's less than 0) to max period+1 hour
+        p_range = np.linspace(np.max([0, best_periods.min()-1/24.]), best_periods.max()+1/24., 1000)
 
-        # determine the indices of local power maxima
-        best_idx = argrelextrema(power, np.greater)
+        # calculate LSP for the range
+        LSP = model.periodogram(p_range)
 
-        # sort these indices based on actual power value
-        # reverse list so max is read first
-        indices = np.argsort(power[best_idx[0]])[::-1]
+        ax[0].plot(p_range*24., LSP, color=colours[0], alpha=0.7)
 
-        # sort our original indices based on the new
-        # power-sorted indices
-        best_idx = (best_idx[0]).T[indices]
-        best_freqs = freq[best_idx].T
+        # set xlim same as p_range
+        ax[0].set_xlim([np.max([0, best_periods.min()-1/24.])*24, best_periods.max()*24.+1])
 
-        new_freq = best_freqs[0]
-        new_period = 1.0 / new_freq
+        if data is not None:
+            #lower, upper = np.percentile(data[:, :, -1], [5, 95])
+            lower = p_range.min()*24.
+            upper = p_range.max()*24.
+            masked_data = data[(data[:, :, -1] > lower) & (data[:, :, -1] < upper)]
 
-        if plot:
 
-            # plot all the frequencies
-            ax[i][0].plot((1.0 / freq) * 24.0, power, color=colours[0], alpha=0.7)
-
-            if data is not None:
-                ax[i][0].hist(
-                    masked_data[:, -1],
-                    bins=20,
-                    color=colours[3],
-                    alpha=0.5,
-                    density=True,
-                    label="Posterior",
-                )
-
-            y_max = (ax[i][0].get_ylim())[1]
-
-            ax[i][0].vlines(
-                new_period * 24.0,
-                0,
-                y_max,
-                colors=colours[2],
-                linestyles="--",
-                label="Best fit : %.5f" % (new_period * 24.0),
+        if data is not None:
+            ax[0].hist(
+                masked_data[:, -1],
+                bins=20,
+                color=colours[3],
+                alpha=0.5,
+                density=True,
+                label="Posterior",
             )
 
-            if true_period:
-                ax[i][0].vlines(
-                    true_period,
-                    0,
-                    y_max,
-                    colors=colours[1],
-                    linestyles="--",
-                    label="True fit : %.5f" % true_period,
-                )
+        ax[0].set_xlabel("Period (hrs)")
+        ax[0].set_ylabel("Normalized Power")
+        ax[0].set_ylim([0, 1])
 
-            ax[i][0].set_xlabel("Period (hrs)")
-            ax[i][0].set_ylabel("Normalized Power")
-            ax[i][0].set_title("nterms = %s" % (i + 1))
-            ax[i][0].set_xlim([0, 24])
-            ax[i][0].set_ylim([0, y_max])
+        if legend:
+            ax[0].legend()
 
-            if legend:
-                ax[i][0].legend()
+        for i in np.arange(len(best_periods)):
+
+            ax[0].vlines(
+                best_periods[i]*24.,
+                0,
+                1,
+                colors=colours[2],
+                linestyles="--",
+                #label="Best fit : %.5f" % (best_periods[i] * 24.0),
+            )
 
             plot_folded_lightcurve(
                 time,
                 flux,
-                period=new_period * 24.0,
-                ax=ax[i][1],
+                period=best_periods[i] * 24.0,
+                ax=ax[i+1],
                 true_lightcurve=true_lightcurve,
                 use_radians=use_radians,
                 legend=False,
             )
 
-        lsp_periods = np.append(lsp_periods, new_period * 24.0)
-
-    if plot:
         plt.tight_layout()
 
-    return lsp_periods
+
+    #---------------------
+
+    #
+    # from scipy.signal import argrelextrema
+    #
+    # # get l-s best period estimate
+    # from lombscargle import make_lsp
+    # # from astropy.timeseries import LombScargle
+    #
+    # if data is not None:
+    #     lower, upper = np.percentile(data[:, :, -1], [5, 95])
+    #     masked_data = data[(data[:, :, -1] > lower) & (data[:, :, -1] < upper)]
+    #
+    # lsp_periods = np.array([])
+    #
+    # if plot:
+    #     fig, ax = plt.subplots(3, 2, figsize=(10, 10), squeeze=False)
+    #
+    # for i in np.arange(3):
+    #     freq, power = make_lsp(time, flux, flux_err, p_max=5.0, nterms=(i + 1))
+    #
+    #     # determine the indices of local power maxima
+    #     best_idx = argrelextrema(power, np.greater)
+    #
+    #     # sort these indices based on actual power value
+    #     # reverse list so max is read first
+    #     indices = np.argsort(power[best_idx[0]])[::-1]
+    #
+    #     # sort our original indices based on the new
+    #     # power-sorted indices
+    #     best_idx = (best_idx[0]).T[indices]
+    #     best_freqs = freq[best_idx].T
+    #
+    #     new_freq = best_freqs[0]
+    #     new_period = 1.0 / new_freq
+    #
+    #     if plot:
+    #
+    #         # plot all the frequencies
+    #         ax[i][0].plot((1.0 / freq) * 24.0, power, color=colours[0], alpha=0.7)
+    #
+    #         if data is not None:
+    #             ax[i][0].hist(
+    #                 masked_data[:, -1],
+    #                 bins=20,
+    #                 color=colours[3],
+    #                 alpha=0.5,
+    #                 density=True,
+    #                 label="Posterior",
+    #             )
+    #
+    #         y_max = (ax[i][0].get_ylim())[1]
+    #
+    #         ax[i][0].vlines(
+    #             new_period * 24.0,
+    #             0,
+    #             y_max,
+    #             colors=colours[2],
+    #             linestyles="--",
+    #             label="Best fit : %.5f" % (new_period * 24.0),
+    #         )
+    #
+    #         if true_period:
+    #             ax[i][0].vlines(
+    #                 true_period,
+    #                 0,
+    #                 y_max,
+    #                 colors=colours[1],
+    #                 linestyles="--",
+    #                 label="True fit : %.5f" % true_period,
+    #             )
+    #
+    #         ax[i][0].set_xlabel("Period (hrs)")
+    #         ax[i][0].set_ylabel("Normalized Power")
+    #         ax[i][0].set_title("nterms = %s" % (i + 1))
+    #         ax[i][0].set_xlim([0, 24])
+    #         ax[i][0].set_ylim([0, y_max])
+    #
+    #         if legend:
+    #             ax[i][0].legend()
+    #
+    #         plot_folded_lightcurve(
+    #             time,
+    #             flux,
+    #             period=new_period * 24.0,
+    #             ax=ax[i][1],
+    #             true_lightcurve=true_lightcurve,
+    #             use_radians=use_radians,
+    #             legend=False,
+    #         )
+    #
+    #     lsp_periods = np.append(lsp_periods, new_period * 24.0)
+    #
+    # if plot:
+    #     plt.tight_layout()
+
+    return best_periods
 
 
 def plot_posterior(data, true_period=None, legend=True, colours=None):
@@ -477,7 +569,7 @@ def plot_posterior(data, true_period=None, legend=True, colours=None):
     ax[0, 1].set_ylim(ax[0, 1].get_ylim())
 
     # zoom in on the part of the graph that has the highest probability
-    probs, edges = calc_prob(data, 4, true_period)
+    probs, edges = calc_prob(data, 4, true_period, width=10)
 
     if not np.any(probs):
         raise Exception(
@@ -809,66 +901,66 @@ def make_summary_plots(
 
         ###   TRACE PLOT   ###
         # should be fully functional in both 4 and 6 dim, with period and without
-        print("\nplotting trace plot")
-        plot_trace(data, f.attrs["iterations"])
-
-        if save_fig:
-            print("saving trace plot")
-            plt.savefig(filename.replace(".hdf5", "_trace.pdf"), format="pdf")
-
-        ###   CORNER PLOTS   ###
-        ### should be fully functional in both 4 and 6 dim, with period and without
-        print("\nplotting corner plot")
-        plot_corner(data, true_period)
-
-        if save_fig:
-            print("saving corner plot")
-            plt.savefig(filename.replace(".hdf5", "_corner.pdf"), format="pdf")
-
-        print("\nplotting trimmed corner plot")
-        plot_corner(data, true_period, trim=[5, 95])
-
-        if save_fig:
-            print("saving trimmed corner plot")
-            plt.savefig(filename.replace(".hdf5", "_corner_5_95.pdf"), format="pdf")
-
-        print("\nplotting zoomed-in corner plot")
-        plot_corner(data, true_period, zoom=True)
-
-        if save_fig:
-            print("saving zoomed-in corner plot")
-            plt.savefig(filename.replace(".hdf5", "_corner_zoom.pdf"), format="pdf")
-
-        ###   POSTERIOR   ###
-        ### should be fully functional in both 4 and 6 dim, with period and without
-        print("\nplotting posterior plot")
-        best_period = plot_posterior(data, true_period)
-
-        if save_fig:
-            print("saving posterior plot")
-            plt.savefig(filename.replace(".hdf5", "_posterior.pdf"), format="pdf")
-
-        print("\nBEST PERIODS")
-        print(best_period)
-
-        # ###   FOLDED LIGHTCURVE   ###
-        ### should be fully functional in both 4 and 6 dim, with period and without
-        print("\nplotting folded lightcurve")
-        fig, ax = plt.subplots(2, 2, figsize=(10, 10))
-
-        for i, v in enumerate(best_period):
-            plot_folded_lightcurve(
-                time,
-                flux,
-                flux_err=flux_err,
-                legend=False,
-                ax=ax[int(i/2), i % 2],
-                period=best_period[i],
-                true_lightcurve=true_lightcurve,
-            )
-        if save_fig:
-            print("saving folded lightcurve")
-            plt.savefig(filename.replace(".hdf5", "_folded.pdf"), format="pdf")
+        # print("\nplotting trace plot")
+        # plot_trace(data, f.attrs["iterations"])
+        #
+        # if save_fig:
+        #     print("saving trace plot")
+        #     plt.savefig(filename.replace(".hdf5", "_trace.pdf"), format="pdf")
+        #
+        # ###   CORNER PLOTS   ###
+        # ### should be fully functional in both 4 and 6 dim, with period and without
+        # print("\nplotting corner plot")
+        # plot_corner(data, true_period)
+        #
+        # if save_fig:
+        #     print("saving corner plot")
+        #     plt.savefig(filename.replace(".hdf5", "_corner.pdf"), format="pdf")
+        #
+        # print("\nplotting trimmed corner plot")
+        # plot_corner(data, true_period, trim=[5, 95])
+        #
+        # if save_fig:
+        #     print("saving trimmed corner plot")
+        #     plt.savefig(filename.replace(".hdf5", "_corner_5_95.pdf"), format="pdf")
+        #
+        # print("\nplotting zoomed-in corner plot")
+        # plot_corner(data, true_period, zoom=True)
+        #
+        # if save_fig:
+        #     print("saving zoomed-in corner plot")
+        #     plt.savefig(filename.replace(".hdf5", "_corner_zoom.pdf"), format="pdf")
+        #
+        # ###   POSTERIOR   ###
+        # ### should be fully functional in both 4 and 6 dim, with period and without
+        # print("\nplotting posterior plot")
+        # best_period = plot_posterior(data, true_period)
+        #
+        # if save_fig:
+        #     print("saving posterior plot")
+        #     plt.savefig(filename.replace(".hdf5", "_posterior.pdf"), format="pdf")
+        #
+        # print("\nBEST PERIODS")
+        # print(best_period)
+        #
+        # # ###   FOLDED LIGHTCURVE   ###
+        # ### should be fully functional in both 4 and 6 dim, with period and without
+        # print("\nplotting folded lightcurve")
+        # fig, ax = plt.subplots(2, 2, figsize=(10, 10))
+        #
+        # for i, v in enumerate(best_period):
+        #     plot_folded_lightcurve(
+        #         time,
+        #         flux,
+        #         flux_err=flux_err,
+        #         legend=False,
+        #         ax=ax[int(i/2), i % 2],
+        #         period=best_period[i],
+        #         true_lightcurve=true_lightcurve,
+        #     )
+        # if save_fig:
+        #     print("saving folded lightcurve")
+        #     plt.savefig(filename.replace(".hdf5", "_folded.pdf"), format="pdf")
 
 
 def main():
