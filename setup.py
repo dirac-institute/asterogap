@@ -1,4 +1,4 @@
-from os import path
+from os import path, remove
 from setuptools import setup, find_packages
 import sys
 import versioneer
@@ -32,7 +32,41 @@ with open(path.join(here, 'requirements.txt')) as requirements_file:
     requirements = [line for line in requirements_file.read().splitlines()
                     if not line.startswith('#')]
 
-#######
+# download LCDB latest file
+lcdb_file = "./data/LCLIST_PUB_CURRENT/LC_SUM_PUB.TXT"
+
+if not path.isfile(lcdb_file):
+		# if this command doesn't work, you can always got to
+		# http://www.minorplanet.info/lightcurvedatabase.html
+		# download and unzip the latest public release file
+		# and then place that file into the data folder of this package
+        print("%s is not found." %lcdb_file)
+		zip_url = "http://www.minorplanet.info/datazips/LCLIST_PUB_CURRENT.zip"
+        print("Downloading the lastest public release from %s" %zip_url)
+
+        import requests
+        import zipfile
+
+        r = requests.get(zip_url)
+
+		# send a HTTP request to the server and save 
+		# the HTTP response in a response object called r 
+        with open("LCLIST_PUB_CURRENT.zip",'wb') as f: 
+			# write the contents of the response (r.content) 
+			# to a new file in binary mode. 
+			# should take a few seconds
+            f.write(r.content) 
+
+        with zipfile.ZipFile("LCLIST_PUB_CURRENT.zip", 'r') as zip_ref:
+            zip_ref.extractall("./data/LCLIST_PUB_CURRENT")
+
+		# go ahead and delete the zip file
+        if path.isfile(lcdb_file):
+            remove("LCLIST_PUB_CURRENT.zip")
+
+# hopefully this worked
+
+
 
 setup(
     name='asterogap',
