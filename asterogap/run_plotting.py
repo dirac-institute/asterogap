@@ -899,68 +899,68 @@ def make_summary_plots(
             print("saving lomb-scargle periodogram")
             plt.savefig(filename.replace(".hdf5", "_lsp.pdf"), format="pdf")
 
-        ###   TRACE PLOT   ###
-        # should be fully functional in both 4 and 6 dim, with period and without
-        # print("\nplotting trace plot")
-        # plot_trace(data, f.attrs["iterations"])
-        #
-        # if save_fig:
-        #     print("saving trace plot")
-        #     plt.savefig(filename.replace(".hdf5", "_trace.pdf"), format="pdf")
-        #
-        # ###   CORNER PLOTS   ###
-        # ### should be fully functional in both 4 and 6 dim, with period and without
-        # print("\nplotting corner plot")
-        # plot_corner(data, true_period)
-        #
-        # if save_fig:
-        #     print("saving corner plot")
-        #     plt.savefig(filename.replace(".hdf5", "_corner.pdf"), format="pdf")
-        #
-        # print("\nplotting trimmed corner plot")
-        # plot_corner(data, true_period, trim=[5, 95])
-        #
-        # if save_fig:
-        #     print("saving trimmed corner plot")
-        #     plt.savefig(filename.replace(".hdf5", "_corner_5_95.pdf"), format="pdf")
-        #
-        # print("\nplotting zoomed-in corner plot")
-        # plot_corner(data, true_period, zoom=True)
-        #
-        # if save_fig:
-        #     print("saving zoomed-in corner plot")
-        #     plt.savefig(filename.replace(".hdf5", "_corner_zoom.pdf"), format="pdf")
-        #
-        # ###   POSTERIOR   ###
-        # ### should be fully functional in both 4 and 6 dim, with period and without
-        # print("\nplotting posterior plot")
-        # best_period = plot_posterior(data, true_period)
-        #
-        # if save_fig:
-        #     print("saving posterior plot")
-        #     plt.savefig(filename.replace(".hdf5", "_posterior.pdf"), format="pdf")
-        #
-        # print("\nBEST PERIODS")
-        # print(best_period)
-        #
-        # # ###   FOLDED LIGHTCURVE   ###
-        # ### should be fully functional in both 4 and 6 dim, with period and without
-        # print("\nplotting folded lightcurve")
-        # fig, ax = plt.subplots(2, 2, figsize=(10, 10))
-        #
-        # for i, v in enumerate(best_period):
-        #     plot_folded_lightcurve(
-        #         time,
-        #         flux,
-        #         flux_err=flux_err,
-        #         legend=False,
-        #         ax=ax[int(i/2), i % 2],
-        #         period=best_period[i],
-        #         true_lightcurve=true_lightcurve,
-        #     )
-        # if save_fig:
-        #     print("saving folded lightcurve")
-        #     plt.savefig(filename.replace(".hdf5", "_folded.pdf"), format="pdf")
+        ##   TRACE PLOT   ###
+        should be fully functional in both 4 and 6 dim, with period and without
+        print("\nplotting trace plot")
+        plot_trace(data, f.attrs["iterations"])
+
+        if save_fig:
+            print("saving trace plot")
+            plt.savefig(filename.replace(".hdf5", "_trace.pdf"), format="pdf")
+
+        ###   CORNER PLOTS   ###
+        ### should be fully functional in both 4 and 6 dim, with period and without
+        print("\nplotting corner plot")
+        plot_corner(data, true_period)
+
+        if save_fig:
+            print("saving corner plot")
+            plt.savefig(filename.replace(".hdf5", "_corner.pdf"), format="pdf")
+
+        print("\nplotting trimmed corner plot")
+        plot_corner(data, true_period, trim=[5, 95])
+
+        if save_fig:
+            print("saving trimmed corner plot")
+            plt.savefig(filename.replace(".hdf5", "_corner_5_95.pdf"), format="pdf")
+
+        print("\nplotting zoomed-in corner plot")
+        plot_corner(data, true_period, zoom=True)
+
+        if save_fig:
+            print("saving zoomed-in corner plot")
+            plt.savefig(filename.replace(".hdf5", "_corner_zoom.pdf"), format="pdf")
+
+        ###   POSTERIOR   ###
+        ### should be fully functional in both 4 and 6 dim, with period and without
+        print("\nplotting posterior plot")
+        best_period = plot_posterior(data, true_period)
+
+        if save_fig:
+            print("saving posterior plot")
+            plt.savefig(filename.replace(".hdf5", "_posterior.pdf"), format="pdf")
+
+        print("\nBEST PERIODS")
+        print(best_period)
+
+        # ###   FOLDED LIGHTCURVE   ###
+        ### should be fully functional in both 4 and 6 dim, with period and without
+        print("\nplotting folded lightcurve")
+        fig, ax = plt.subplots(2, 2, figsize=(10, 10))
+
+        for i, v in enumerate(best_period):
+            plot_folded_lightcurve(
+                time,
+                flux,
+                flux_err=flux_err,
+                legend=False,
+                ax=ax[int(i/2), i % 2],
+                period=best_period[i],
+                true_lightcurve=true_lightcurve,
+            )
+        if save_fig:
+            print("saving folded lightcurve")
+            plt.savefig(filename.replace(".hdf5", "_folded.pdf"), format="pdf")
 
 
 def main():
