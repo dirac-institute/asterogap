@@ -889,7 +889,7 @@ def make_summary_plots(
         data[:, :, -1] = np.exp(data[:, :, -1]) * 24.0
 
         ###  LOMB-SCARGLE   ###
-        # should be fully functional in both 4 and 6 dim, with period and without
+        ### should be fully functional in both 4 and 6 dim, with period and without
         print("\nplotting lomb-scargle periodogram")
         run_lsp(
             time, flux, flux_err, data, true_period, true_lightcurve, plot=True
@@ -899,8 +899,8 @@ def make_summary_plots(
             print("saving lomb-scargle periodogram")
             plt.savefig(filename.replace(".hdf5", "_lsp.pdf"), format="pdf")
 
-        ##   TRACE PLOT   ###
-        should be fully functional in both 4 and 6 dim, with period and without
+        ###   TRACE PLOT   ###
+        ### should be fully functional in both 4 and 6 dim, with period and without
         print("\nplotting trace plot")
         plot_trace(data, f.attrs["iterations"])
 
