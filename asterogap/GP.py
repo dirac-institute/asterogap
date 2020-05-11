@@ -194,7 +194,10 @@ def prior(params, kde):
         #if period is smaller than 1 minute or larger than a year, then -np inf 
         if params[5] < -7.27:
             p_log_period = -np.inf
-        if params[5] > 5.9:
+#        if params[5] < -700:
+#            print("v smol %d" %params[5])
+#            p_log_period = -np.inf
+        elif params[5] > 5.9:
             p_log_period = -np.inf
         else:
         	p_log_period = kde.evaluate(params[5]) #scipy.stats.norm(np.log(4.0 / 24.0), (12.0 / 24.0)).logpdf(params[5])
