@@ -7,10 +7,10 @@ import matplotlib.pyplot as plt
 import h5py
 
 
-def calc_prob(data, nperiods=1, period=None, p_range=None, bins=1000, width=0.1):
+def calc_periods(data, nperiods=1, period=None, p_range=None, bins=1000, width=0.1):
     """
     NOTE: Should work for both single-kernel and double-kernel results
-    Calculated the probability of an interval of periods.
+    Roughly calculates the most likely period(s).
 
     Parameters
     ----------
@@ -65,19 +65,20 @@ def calc_prob(data, nperiods=1, period=None, p_range=None, bins=1000, width=0.1)
     dx = bins[1] - bins[0]
 
     periods = bins[indices] + dx/2. # add half the bin to center
-
-    edges = [periods - width/2., periods + width/2.]
-
-    prob_sum = []
-
-    for i, v in enumerate(edges[0]):
-        # find all the periods that fall within the defined edges
-        periods_where = flat_data[:,-1][np.where((flat_data[:,-1]>= edges[0][i]) & (flat_data[:,-1] <= edges[1][i]))]
-
-        # find the sum of the number of walkers within the edges and add to list
-        prob_sum.append(periods_where.shape[0]/flat_data.shape[0])
-
-    return prob_sum, edges
+    #
+    # edges = [periods - width/2., periods + width/2.]
+    #
+    # prob_sum = []
+    #
+    # for i, v in enumerate(edges[0]):
+    #     # find all the periods that fall within the defined edges
+    #     periods_where = flat_data[:,-1][np.where((flat_data[:,-1]>= edges[0][i]) & (flat_data[:,-1] <= edges[1][i]))]
+    #
+    #     # find the sum of the number of walkers within the edges and add to list
+    #     prob_sum.append(periods_where.shape[0]/flat_data.shape[0])
+    #
+    # return prob_sum, edges
+    return periods
 
 
 
@@ -145,20 +146,18 @@ def plot_corner(data, true_period=None, colours=None, zoom=False, trim=None, fig
         flat_data = data.reshape(data.shape[0] * data.shape[1], data.shape[2])
 
     if zoom:
-        prob, edges = calc_prob(data, period=true_period, )
+        periods = calc_periods(data, period=true_period, )
 
-        print(prob, edges)
+        width = 0.5
+        edges = [periods - width/2., periods + width/2.]
 
-        if np.any(prob == 0):
-            raise Exception(
-                "WARNING: Probability around period is 0 and therefore cannot display a valid corner plot."
-            )
+        # if np.any(prob == 0):
+        #     raise Exception(
+        #         "WARNING: Probability around period is 0 and therefore cannot display a valid corner plot."
+        #     )
 
         flat_data = data[(data[:, :, -1] > edges[0]) & (data[:, :, -1] < edges[1])]
 
-        print(flat_data)
-
-    # print(data.shape[2])
     if data.shape[2] == 6:
         labels = ["mean", "log_amp_long", "log_metric", "log_amp", "gamma", "period"]
         truths = [None, None, None, None, None, true_period]
@@ -569,22 +568,53 @@ def plot_posterior(data, true_period=None, legend=True, colours=None):
     ax[0, 1].set_ylim(ax[0, 1].get_ylim())
 
     # zoom in on the part of the graph that has the highest probability
-    probs, edges = calc_prob(data, 4, true_period, width=10)
-
-    if not np.any(probs):
-        raise Exception(
-            "WARNING: Probability around period is 0 and therefore cannot display a valid corner plot."
-        )
+    periods = calc_periods(data, 4, true_period)
+    #
+    # if not np.any(probs):
+    #     raise Exception(
+    #         "WARNING: Probability around period is 0 and therefore cannot display a valid corner plot."
+    #     )
 
     best_periods = []
+    probs = []
 
-    for i, v in enumerate(probs):
-        zoom_data = data[(data[:, :, -1] > edges[:][0][i]) & (data[:, :, -1] < edges[:][1][i])]
+    for i, p in enumerate(periods):
+        # trim data to +/- 5 hours
+        period_data = flat_data[flat_data[:,-1]>(p-5)]
+        period_data = period_data[period_data[:,-1]<(p+5)]
 
-        best_period = np.percentile(zoom_data[:, -1], 50)
-        best_periods.append(best_period)
+        h, bins = np.histogram(period_data[:,-1], bins=1000, density=True)
 
-        ax[1+int(i/2), i % 2].hist(zoom_data[:, -1], bins="auto", density=True, color=colours[0], alpha=0.3)
+        top_h = -np.sort(-h)[0:1]
+        half_h = top_h/2
+
+        # half max h values
+        hmin = h[h>half_h][0]
+        hmax = h[h>half_h][-1]
+
+        bin_edges = [bins[np.where(h==hmin)[0][0]], bins[np.where(h==hmax)[0][0]]]
+
+        # double the width of the bin
+        bin_edges[0] = bin_edges[0]-np.diff(bin_edges)[0]/2
+        bin_edges[1] = bin_edges[1]+np.diff(bin_edges)[0]/2
+
+        # now zoom in on the half-width half-max area
+        zoom_data = data[(data[:, :, -1] > bin_edges[0]) & (data[:, :, -1] < bin_edges[1])]
+
+        #now we can see what the probs are
+        prob = period_data.shape[0]/(data.shape[0] * data.shape[1])
+        probs = np.append(probs, prob)
+
+        # plot and get bin info
+        # set density to false so the y-axis gives a relative sense of scale
+        # for the different periods
+        n, bins, p = ax[1+int(i/2), i % 2].hist(zoom_data[:, -1], bins="auto", density=False, color=colours[0], alpha=0.3, label="probability: %.3f"%prob)
+
+        # find the bin with the max n and add half a bin width
+        best_period = bins[np.where(n==n.max())]+(bins[1]-bins[0])/2
+        best_periods = np.append(best_periods, best_period)
+
+
         ylim = ax[1+int(i/2), i % 2].get_ylim()
         xlim = ax[1+int(i/2), i % 2].get_xlim()
 
@@ -617,7 +647,7 @@ def plot_posterior(data, true_period=None, legend=True, colours=None):
                 linestyle="dashed",
                 label="best period : %.5f" % best_period,
             )
-        ax[1+int(i/2), i % 2].set_title("Probability %.3f" % probs[i])
+        #ax[1+int(i/2), i % 2].set_title("Probability %.3f" % probs[i])
         ax[1+int(i/2), i % 2].set_xlabel("Period in hours")
         ax[1+int(i/2), i % 2].set_ylabel("Probability")
         ax[1+int(i/2), i % 2].set_ylim(ylim)
@@ -631,7 +661,7 @@ def plot_posterior(data, true_period=None, legend=True, colours=None):
 
     plt.tight_layout()
 
-    return np.array(best_periods)
+    return best_periods, probs
 
 
 def plot_folded_lightcurve(
@@ -890,51 +920,53 @@ def make_summary_plots(
 
         ###  LOMB-SCARGLE   ###
         ### should be fully functional in both 4 and 6 dim, with period and without
-        print("\nplotting lomb-scargle periodogram")
-        run_lsp(
-            time, flux, flux_err, data, true_period, true_lightcurve, plot=True
-        )
 
-        if save_fig:
-            print("saving lomb-scargle periodogram")
-            plt.savefig(filename.replace(".hdf5", "_lsp.pdf"), format="pdf")
+        if lsp:
+            print("\nplotting lomb-scargle periodogram")
+            run_lsp(
+                time, flux, flux_err, data, true_period, true_lightcurve, plot=True
+            )
+
+            if save_fig:
+                print("saving lomb-scargle periodogram")
+                plt.savefig(filename.replace(".hdf5", "_lsp.pdf"), format="pdf")
 
         ###   TRACE PLOT   ###
         ### should be fully functional in both 4 and 6 dim, with period and without
-        print("\nplotting trace plot")
-        plot_trace(data, f.attrs["iterations"])
-
-        if save_fig:
-            print("saving trace plot")
-            plt.savefig(filename.replace(".hdf5", "_trace.pdf"), format="pdf")
-
-        ###   CORNER PLOTS   ###
-        ### should be fully functional in both 4 and 6 dim, with period and without
-        print("\nplotting corner plot")
-        plot_corner(data, true_period)
-
-        if save_fig:
-            print("saving corner plot")
-            plt.savefig(filename.replace(".hdf5", "_corner.pdf"), format="pdf")
-
-        print("\nplotting trimmed corner plot")
-        plot_corner(data, true_period, trim=[5, 95])
-
-        if save_fig:
-            print("saving trimmed corner plot")
-            plt.savefig(filename.replace(".hdf5", "_corner_5_95.pdf"), format="pdf")
-
-        print("\nplotting zoomed-in corner plot")
-        plot_corner(data, true_period, zoom=True)
-
-        if save_fig:
-            print("saving zoomed-in corner plot")
-            plt.savefig(filename.replace(".hdf5", "_corner_zoom.pdf"), format="pdf")
+        # print("\nplotting trace plot")
+        # plot_trace(data, f.attrs["iterations"])
+        #
+        # if save_fig:
+        #     print("saving trace plot")
+        #     plt.savefig(filename.replace(".hdf5", "_trace.pdf"), format="pdf")
+        #
+        # ###   CORNER PLOTS   ###
+        # ### should be fully functional in both 4 and 6 dim, with period and without
+        # print("\nplotting corner plot")
+        # plot_corner(data, true_period)
+        #
+        # if save_fig:
+        #     print("saving corner plot")
+        #     plt.savefig(filename.replace(".hdf5", "_corner.pdf"), format="pdf")
+        #
+        # print("\nplotting trimmed corner plot")
+        # plot_corner(data, true_period, trim=[5, 95])
+        #
+        # if save_fig:
+        #     print("saving trimmed corner plot")
+        #     plt.savefig(filename.replace(".hdf5", "_corner_5_95.pdf"), format="pdf")
+        #
+        # print("\nplotting zoomed-in corner plot")
+        # plot_corner(data, true_period, zoom=True)
+        #
+        # if save_fig:
+        #     print("saving zoomed-in corner plot")
+        #     plt.savefig(filename.replace(".hdf5", "_corner_zoom.pdf"), format="pdf")
 
         ###   POSTERIOR   ###
         ### should be fully functional in both 4 and 6 dim, with period and without
         print("\nplotting posterior plot")
-        best_period = plot_posterior(data, true_period)
+        best_period, probs = plot_posterior(data, true_period)
 
         if save_fig:
             print("saving posterior plot")
@@ -1007,6 +1039,15 @@ if __name__ == "__main__":
         help="Sets to true if you want to save the figures generated.",
     )
     parser.add_argument(
+        "-l",
+        "--lsp",
+        action="store_true",
+        dest="lsp",
+        required=False,
+        default=False,
+        help="Creates an LSP plot.",
+    )
+    parser.add_argument(
         "-p",
         "--period",
         action="store",
@@ -1020,6 +1061,7 @@ if __name__ == "__main__":
 
     filename = clargs.filename
     save_fig = clargs.save_fig
+    lsp = clargs.lsp
     period_set = clargs.period
 
     main()
