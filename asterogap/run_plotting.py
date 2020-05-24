@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import h5py
 
 
-def calc_periods(data, nperiods=1, period=None, p_range=None, bins=1000, width=0.1):
+def calc_periods(data, nperiods=1, period=None, p_range=None, bins=20, width=0.1):
     """
     NOTE: Should work for both single-kernel and double-kernel results
     Roughly calculates the most likely period(s).
@@ -579,9 +579,16 @@ def plot_posterior(data, true_period=None, legend=True, colours=None):
     probs = []
 
     for i, p in enumerate(periods):
-        # trim data to +/- 5 hours
-        period_data = flat_data[flat_data[:,-1]>(p-5)]
-        period_data = period_data[period_data[:,-1]<(p+5)]
+        # trim data to +/- 10-20% of what the period is
+        # dividing the log2 of the period by 35 should give you
+        # ~10% for 10 hours, ~20% for 200 hours, and ~30% for 1500 hours
+        # and if the period is less than 10 hour (since the log2(1)=0),
+        # then just set the trim to 10%
+        if p > 10:
+            period_data = flat_data[(flat_data[:,-1]>(p-p*np.log2(p)/35)) & (flat_data[:,-1]<(p+p*np.log2(p)/35)) ]
+
+        else:
+            period_data = flat_data[(flat_data[:,-1]>(p-p*0.1)) & (flat_data[:,-1]<(p+p*0.1)) ]
 
         h, bins = np.histogram(period_data[:,-1], bins=1000, density=True)
 
@@ -592,13 +599,27 @@ def plot_posterior(data, true_period=None, legend=True, colours=None):
         hmin = h[h>half_h][0]
         hmax = h[h>half_h][-1]
 
+        # if the half_h is too much (aka hmin is the same as hmax), try 10%?
+        # this can happen if curve is too steep
+        if hmax==hmin:
+            hmin = h[h>(0.1*top_h)][0]
+            hmax = h[h>(0.1*top_h)][-1]
+
         bin_edges = [bins[np.where(h==hmin)[0][0]], bins[np.where(h==hmax)[0][0]]]
 
-        # double the width of the bin
-        bin_edges[0] = bin_edges[0]-np.diff(bin_edges)[0]/2
-        bin_edges[1] = bin_edges[1]+np.diff(bin_edges)[0]/2
+        bin_center = bins[np.where(h==top_h)]
 
-        # now zoom in on the half-width half-max area
+        # move the bin edges to 3 sigma away
+        bin_edges[0] = bin_center - 3*(bin_center - bin_edges[0])
+        bin_edges[1] = bin_center + 3*(bin_edges[1] - bin_center)
+
+        # if the 10%h fix didn't work earlier, manually move the bins out one each,
+        # so that there's at least something to plot
+        if bin_edges[0] == bin_edges[1]:
+            bin_edges[0] = bins[np.where(h==hmin)[0][0]-1]
+            bin_edges[1] = bins[np.where(h==hmin)[0][0]+1]
+
+        # now zoom in on the half-width half-max * 3 area
         zoom_data = data[(data[:, :, -1] > bin_edges[0]) & (data[:, :, -1] < bin_edges[1])]
 
         #now we can see what the probs are
