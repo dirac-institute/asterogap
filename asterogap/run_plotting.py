@@ -843,7 +843,7 @@ def plot_folded_lightcurve(
         # compute the difference from one phase bin to the next
         tdiff = np.diff(m_phase)
 
-        print("tdiff " + str(tdiff))
+        #print("tdiff " + str(tdiff))
         # find all differences < 0, which is where the phase wraps around
         idx = np.where(tdiff < 0)[0]
         # if idx.size == 0:
