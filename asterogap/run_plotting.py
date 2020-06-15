@@ -591,6 +591,10 @@ def plot_posterior(data, true_period=None, legend=True, colours=None):
         else:
             period_data = flat_data[(flat_data[:,-1]>(p-p*0.1)) & (flat_data[:,-1]<(p+p*0.1)) ]
 
+            if len(period_data)==0:
+                # this can happen if the period is too close to 0
+                period_data = flat_data[(flat_data[:,-1]>0) & (flat_data[:,-1]<(p+p*0.1)) ]
+
         h, bins = np.histogram(period_data[:,-1], bins=1000, density=True)
 
         top_h = -np.sort(-h)[0:1]
