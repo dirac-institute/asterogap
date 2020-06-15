@@ -5,7 +5,7 @@ import pandas as pd
 import h5py
 
 # from plotting import plot_mcmc_sampling_results
-from GP import GPFit
+from asterogap.GP import GPFit
 
 import os
 
