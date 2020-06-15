@@ -8,5 +8,4 @@ pandas
 argparse
 h5py
 corner
-zipfile
 requests
