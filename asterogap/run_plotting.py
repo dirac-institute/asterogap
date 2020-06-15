@@ -549,7 +549,7 @@ def plot_posterior(data, true_period=None, legend=True, colours=None):
     lower, upper = np.percentile(data[:, :, -1], [5, 95])
     masked_data = data[(data[:, :, -1] > lower) & (data[:, :, -1] < upper)]
 
-    ax[0, 1].hist(masked_data[:, -1], bins="auto", density=True, color=colours[0], alpha=0.3)
+    ax[0, 1].hist(masked_data[:, -1], bins="scott", density=True, color=colours[0], alpha=0.3)
 
     if true_period:
         ylim = ax[0, 1].get_ylim()
