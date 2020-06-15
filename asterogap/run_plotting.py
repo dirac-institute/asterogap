@@ -526,7 +526,7 @@ def plot_posterior(data, true_period=None, legend=True, colours=None):
     # plot the full histogram of period results
     flat_data = data.reshape(data.shape[0] * data.shape[1], data.shape[2])
 
-    ax[0, 0].hist(flat_data[:, -1], bins="auto", density=True, color=colours[0], alpha=0.3)
+    ax[0, 0].hist(flat_data[:, -1], bins="scott", density=True, color=colours[0], alpha=0.3)
 
     if true_period:
         ylim = ax[0, 0].get_ylim()
