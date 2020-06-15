@@ -5,6 +5,7 @@ import numpy as np
 import corner
 import matplotlib.pyplot as plt
 import h5py
+from asterogap.GP import GPFit
 
 
 def calc_periods(data, nperiods=1, period=None, p_range=None, bins=20, width=0.1):
@@ -835,7 +836,49 @@ def plot_folded_lightcurve(
         m_flux = models[1]
 
         m_phase = (m_time / period_days) - np.floor(m_time / period_days)
-        print("mphase " + str(m_phase))
+        #print("mphase " + str(m_phase))
+        if use_radians:
+            m_phase *= 2.0 * np.pi
+
+        # compute the difference from one phase bin to the next
+        tdiff = np.diff(m_phase)
+
+        print("tdiff " + str(tdiff))
+        # find all differences < 0, which is where the phase wraps around
+        idx = np.where(tdiff < 0)[0]
+        # if idx.size == 0:
+        #    idx = np.array(0)
+
+        # loop through the different samples
+        for i, m in enumerate(m_flux):
+            # loop through indices where phase goes from 1 (or 2pi) to 0
+            # plot each phase light curve separately
+            istart = 0
+            iend = idx[0] + 1
+
+            if i == 0:
+                # first phase cycle also contains the label for the legend
+                ax.plot(
+                    m_phase[istart:iend],
+                    m[istart:iend],
+                    alpha=0.1,
+                    c=colours[2],
+                    label="model",
+                )
+
+            else:
+                ax.plot(
+                    m_phase[istart:iend],
+                    m[istart:iend],
+                    alpha=0.1,
+                    c=colours[2],
+                    label="",
+                )
+
+            form_time = models[0] - t0
+        m_flux = models[1]
+
+        m_phase = (m_time / period_days) - np.floor(m_time / period_days)
         if use_radians:
             m_phase *= 2.0 * np.pi
 
@@ -903,9 +946,48 @@ def plot_folded_lightcurve(
 
     return ax
 
+def read_data(filename, period_set=None):
+    """
+    Function reading in the resultant HDF5 file produced from run_gp.py.
+
+    Parameters
+    ----------
+    filename : string
+        Name of the HDF5 file to be read in
+
+    period_set: int
+        If the true period is known and should be included in some of the plots
+
+    Returns
+    ----------
+    data : MCMC chains
+
+    time : original time data used for MCMC run
+
+    flux : original flux data used for MCMC run
+
+    flux_err : original flux error data used for MCMC run
+
+    true_period : the true period that was set, or None if it wasn't
+
+
+    """
+    with h5py.File(filename, "r") as f:
+        data = f["chain"][:]
+        time = f["time"][:]
+        flux = f["flux"][:]
+        flux_err = f["flux_err"][:]
+        iterations = f.attrs["iterations"]
+        true_period = period_set
+
+        if true_period == 0:
+            true_period = None
+
+        return data, time, flux, flux_err, true_period, iterations
+
 
 def make_summary_plots(
-    filename, save_fig=False, true_period=None, true_lightcurve=None
+    filename, save_fig=False, true_period=None, true_lightcurve=None, lsp=False, models=False, trim_steps=False
 ):
     """
     Plots and saves all the necessary plots you can get from an hdf5 results file.
@@ -926,99 +1008,126 @@ def make_summary_plots(
 
     """
 
-    with h5py.File(filename, "r") as f:
-        data = f["chain"][:]
-        time = f["time"][:]
-        flux = f["flux"][:]
-        flux_err = f["flux_err"][:]
-        true_period = period_set
+    data, time, flux, flux_err, true_period, iterations = read_data(filename, period_set)
 
-        if true_period == 0:
-            true_period = None
+    # convert period from log_days to hours
+    data[:, :, -1] = np.exp(data[:, :, -1]) * 24.0
 
-        # convert period from log_days to hours
-        data[:, :, -1] = np.exp(data[:, :, -1]) * 24.0
+    if trim_steps:
+        print(trim_steps)
+        data = data[:,trim_steps[0]:trim_steps[1],:]
 
-        ###  LOMB-SCARGLE   ###
-        ### should be fully functional in both 4 and 6 dim, with period and without
+    ###  LOMB-SCARGLE   ###
+    ### should be fully functional in both 4 and 6 dim, with period and without
 
-        if lsp:
-            print("\nplotting lomb-scargle periodogram")
-            run_lsp(
-                time, flux, flux_err, data, true_period, true_lightcurve, plot=True
-            )
-
-            if save_fig:
-                print("saving lomb-scargle periodogram")
-                plt.savefig(filename.replace(".hdf5", "_lsp.pdf"), format="pdf")
-
-        ###   TRACE PLOT   ###
-        ### should be fully functional in both 4 and 6 dim, with period and without
-        # print("\nplotting trace plot")
-        # plot_trace(data, f.attrs["iterations"])
-        #
-        # if save_fig:
-        #     print("saving trace plot")
-        #     plt.savefig(filename.replace(".hdf5", "_trace.pdf"), format="pdf")
-        #
-        # ###   CORNER PLOTS   ###
-        # ### should be fully functional in both 4 and 6 dim, with period and without
-        # print("\nplotting corner plot")
-        # plot_corner(data, true_period)
-        #
-        # if save_fig:
-        #     print("saving corner plot")
-        #     plt.savefig(filename.replace(".hdf5", "_corner.pdf"), format="pdf")
-        #
-        # print("\nplotting trimmed corner plot")
-        # plot_corner(data, true_period, trim=[5, 95])
-        #
-        # if save_fig:
-        #     print("saving trimmed corner plot")
-        #     plt.savefig(filename.replace(".hdf5", "_corner_5_95.pdf"), format="pdf")
-        #
-        # print("\nplotting zoomed-in corner plot")
-        # plot_corner(data, true_period, zoom=True)
-        #
-        # if save_fig:
-        #     print("saving zoomed-in corner plot")
-        #     plt.savefig(filename.replace(".hdf5", "_corner_zoom.pdf"), format="pdf")
-
-        ###   POSTERIOR   ###
-        ### should be fully functional in both 4 and 6 dim, with period and without
-        print("\nplotting posterior plot")
-        best_period, probs = plot_posterior(data, true_period)
+    if lsp:
+        print("\nplotting lomb-scargle periodogram")
+        run_lsp(
+            time, flux, flux_err, data, true_period, true_lightcurve, plot=True
+        )
 
         if save_fig:
-            print("saving posterior plot")
-            plt.savefig(filename.replace(".hdf5", "_posterior.pdf"), format="pdf")
+            print("saving lomb-scargle periodogram")
+            plt.savefig(filename.replace(".hdf5", "_lsp.pdf"), format="pdf")
 
-        print("\nBEST PERIODS")
-        print(best_period)
+    ###   TRACE PLOT   ###
+    ### should be fully functional in both 4 and 6 dim, with period and without
+    # print("\nplotting trace plot")
+    # plot_trace(data, iterations)
+    #
+    # if save_fig:
+    #     print("saving trace plot")
+    #     plt.savefig(filename.replace(".hdf5", "_trace.pdf"), format="pdf")
+    #
+    # ###   CORNER PLOTS   ###
+    # ### should be fully functional in both 4 and 6 dim, with period and without
+    # print("\nplotting corner plot")
+    # plot_corner(data, true_period)
+    #
+    # if save_fig:
+    #     print("saving corner plot")
+    #     plt.savefig(filename.replace(".hdf5", "_corner.pdf"), format="pdf")
+    #
+    # print("\nplotting trimmed corner plot")
+    # plot_corner(data, true_period, trim=[5, 95])
+    #
+    # if save_fig:
+    #     print("saving trimmed corner plot")
+    #     plt.savefig(filename.replace(".hdf5", "_corner_5_95.pdf"), format="pdf")
+    #
+    # # print("\nplotting zoomed-in corner plot")
+    # # plot_corner(data, true_period, zoom=True)
+    # #
+    # # if save_fig:
+    # #     print("saving zoomed-in corner plot")
+    # #     plt.savefig(filename.replace(".hdf5", "_corner_zoom.pdf"), format="pdf")
 
-        # ###   FOLDED LIGHTCURVE   ###
-        ### should be fully functional in both 4 and 6 dim, with period and without
-        print("\nplotting folded lightcurve")
-        fig, ax = plt.subplots(2, 2, figsize=(10, 10))
+    ###   POSTERIOR   ###
+    ### should be fully functional in both 4 and 6 dim, with period and without
+    print("\nplotting posterior plot")
+    best_period, probs = plot_posterior(data, true_period)
 
-        for i, v in enumerate(best_period):
-            plot_folded_lightcurve(
-                time,
-                flux,
-                flux_err=flux_err,
-                legend=False,
-                ax=ax[int(i/2), i % 2],
-                period=best_period[i],
-                true_lightcurve=true_lightcurve,
-            )
-        if save_fig:
-            print("saving folded lightcurve")
-            plt.savefig(filename.replace(".hdf5", "_folded.pdf"), format="pdf")
+    if save_fig:
+        print("saving posterior plot")
+        plt.savefig(filename.replace(".hdf5", "_posterior.pdf"), format="pdf")
+
+    print("\nBEST PERIODS")
+    print(best_period)
+
+    # ###   FOLDED LIGHTCURVE   ###
+    ### should be fully functional in both 4 and 6 dim, with period and without
+    print("\nplotting folded lightcurve")
+    fig, ax = plt.subplots(2, 2, figsize=(10, 10))
+
+    if models:
+        flat_data = data.reshape(data.shape[0] * data.shape[1], data.shape[2])
+        nsamples = flat_data.shape[0]
+
+        nmodels = 3
+        npred = 1000
+
+        t_pred = np.linspace(time[0], time[-1], npred)
+        m_all = np.zeros((nmodels, t_pred.shape[0]))
+        idx = np.random.choice(np.arange(0, nsamples, 1, dtype=int), size=nmodels)
+
+        asteroid = GPFit(time, flux, flux_err, True)
+        asteroid.set_params()
+        asteroid.set_walker_param_matrix(data.shape[0])
+        asteroid.set_gp_kernel()
+        gp = asteroid.gp
+
+        for i,j in enumerate(idx):
+            p = flat_data[j]
+            print(p)
+            pnew = [p[0], p[1], p[2], p[3], p[4], np.log(p[5]/24.)] #KEY! need to convert back to log days
+
+            gp.set_parameter_vector(pnew)
+            mean_model = gp.sample_conditional(flux, t_pred)
+            m_all[i] = mean_model
+            models = [t_pred, m_all]
+    else:
+        models = None
+
+    for i, v in enumerate(best_period):
+        plot_folded_lightcurve(
+            time,
+            flux,
+            flux_err=flux_err,
+            legend=False,
+            ax=ax[int(i/2), i % 2],
+            period=best_period[i],
+            true_lightcurve=true_lightcurve,
+            models = models,
+        )
+
+    if save_fig:
+        print("saving folded lightcurve")
+        plt.savefig(filename.replace(".hdf5", "_folded.pdf"), format="pdf")
 
 
 def main():
 
-    make_summary_plots(filename, save_fig, period_set)
+    make_summary_plots(filename, save_fig, period_set, lsp=lsp, models=models, trim_steps=trim_steps)
 
     return
 
@@ -1069,6 +1178,15 @@ if __name__ == "__main__":
         help="Creates an LSP plot.",
     )
     parser.add_argument(
+        "-m",
+        "--models",
+        action="store_true",
+        dest="models",
+        required=False,
+        default=False,
+        help="Creates model lightcurves for the folded lightcurve plot.",
+    )
+    parser.add_argument(
         "-p",
         "--period",
         action="store",
@@ -1077,12 +1195,24 @@ if __name__ == "__main__":
         type=float,
         help="Set to a value (hours) if you want to plot a known period.",
     )
+    parser.add_argument(
+        "-t",
+        "--trim",
+        nargs=2,
+        action="store",
+        dest="trim",
+        required=False,
+        type = int,
+        help="Set the boundaries for trimming the walkers.",
+    )
 
     clargs = parser.parse_args()
 
     filename = clargs.filename
     save_fig = clargs.save_fig
     lsp = clargs.lsp
+    models = clargs.models
     period_set = clargs.period
+    trim_steps = clargs.trim
 
     main()
