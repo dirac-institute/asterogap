@@ -20,7 +20,7 @@ class GPFit:
         self.lsp_period = None
 
         self.kde = log_period_prior_kde()
-		
+
 
     def set_params(self):
         """Calculates initial gp parameter values based on data."""
@@ -84,7 +84,7 @@ class GPFit:
             p0_samples = self.kde.resample(nwalkers)
 
             print(p0_samples)
-			
+
             p0[:, -1] =  p0_samples
 
             # print(p0[:, -2])
@@ -134,7 +134,7 @@ class GPFit:
 
         # run steps for a burn-in
         state = sampler.run_mcmc(self.walker_params, burn_in)
-   
+
         print(state.coords)
         sampler.reset()
         sampler.run_mcmc(state.coords, niter)
@@ -191,7 +191,7 @@ def prior(params, kde):
         p_log_gamma = scipy.stats.norm(np.log(10), np.log(2)).logpdf(np.log(params[4]))
 
         #kde = log_period_prior_kde()
-        #if period is smaller than 1 minute or larger than a year, then -np inf 
+        #if period is smaller than 1 minute or larger than a year, then -np inf
         if params[5] < -7.27:
             p_log_period = -np.inf
 #        if params[5] < -700:
@@ -219,7 +219,7 @@ def prior(params, kde):
         p_log_amp_k2 = scipy.stats.norm(np.log(2), np.log(2)).logpdf(params[1])
         p_log_gamma = scipy.stats.norm(np.log(10), np.log(2)).logpdf(np.log(params[2]))
         #kde = log_period_prior_kde()
-        #if period is smaller than 1 minute, then -np inf 
+        #if period is smaller than 1 minute, then -np inf
         if params[5] < -7.27:
             p_log_period = -np.inf
         if params[5] > 5.9:
@@ -332,13 +332,19 @@ def read_lcdb(filename='LC_SUM_PUB.TXT'):
     #lcdata.widefield = tmp
     return lcdata
 
-def log_period_prior_kde(lcdb_file = "../data/LCLIST_PUB_CURRENT/LC_SUM_PUB.TXT"):
+def log_period_prior_kde(lcdb_file = "LCLIST_PUB_CURRENT/LC_SUM_PUB.TXT"):
     """
-	Calculates the log period prior distribution based on the 
+	Calculates the log period prior distribution based on the
 	current asteroid rotational periods documented.
     """
 
-    if not os.path.isfile(lcdb_file):
+    from os.path import expanduser
+    userhome = expanduser("~")
+
+    file_loc = userhome + "/asterogap/data/"
+
+
+    if not os.path.isfile(file_loc + lcdb_file):
 		# if this command doesn't work, you can always got to
 		# http://www.minorplanet.info/lightcurvedatabase.html
 		# download and unzip the latest public release file
@@ -348,17 +354,18 @@ def log_period_prior_kde(lcdb_file = "../data/LCLIST_PUB_CURRENT/LC_SUM_PUB.TXT"
 
         import requests
         import zipfile
-		
+
         zip_url = "http://www.minorplanet.info/datazips/LCLIST_PUB_CURRENT.zip"
         r = requests.get(zip_url)
+        print("test")
 
-		# send a HTTP request to the server and save 
-		# the HTTP response in a response object called r 
-        with open("LCLIST_PUB_CURRENT.zip",'wb') as f: 
-			# write the contents of the response (r.content) 
-			# to a new file in binary mode. 
+		# send a HTTP request to the server and save
+		# the HTTP response in a response object called r
+        with open("LCLIST_PUB_CURRENT.zip",'wb') as f:
+			# write the contents of the response (r.content)
+			# to a new file in binary mode.
 			# should take a few seconds
-            f.write(r.content) 
+            f.write(r.content)
 
         with zipfile.ZipFile("LCLIST_PUB_CURRENT.zip", 'r') as zip_ref:
             zip_ref.extractall("../data/LCLIST_PUB_CURRENT")
@@ -367,17 +374,10 @@ def log_period_prior_kde(lcdb_file = "../data/LCLIST_PUB_CURRENT/LC_SUM_PUB.TXT"
         if os.path.isfile(lcdb_file):
             os.remove("LCLIST_PUB_CURRENT.zip")
 
-	
-
-    lcdb = read_lcdb(lcdb_file)
+    lcdb = read_lcdb(file_loc + lcdb_file)
 	# drop any entries that have NAN for a period value
     x = np.log(lcdb.period.dropna().values/24.)
 
     kde = scipy.stats.gaussian_kde(x, bw_method=0.2 / x.std(ddof=1))
 
     return kde
-
-
-
-
-
