@@ -244,7 +244,7 @@ def run_lsp(
     legend=True,
     colours=None,
     plot=False,
-):
+    ):
     """
     NOTE: Should work for both single-kernel and double-kernel results
     Determine the Lomb-Scargle Periodogram (nterms = 1-3) for the light curve data
@@ -941,7 +941,7 @@ def plot_folded_lightcurve(
         ax.legend()
     ax.set_xlabel("Rotational Phase")
     ax.set_ylabel("Flux")
-    ax.set_title(r"period $P = %.5f$" % period)
+    ax.set_title(r"period $P = %.5f hours$" % period)
     if use_radians:
         ax.set_xlim(0, 2 * np.pi)
     else:

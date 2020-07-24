@@ -41,7 +41,7 @@ if not path.isfile(lcdb_file):
 		# download and unzip the latest public release file
 		# and then place that file into the data folder of this package
         print("%s is not found." %lcdb_file)
-		zip_url = "http://www.minorplanet.info/datazips/LCLIST_PUB_CURRENT.zip"
+        zip_url = "http://www.minorplanet.info/datazips/LCLIST_PUB_CURRENT.zip"
         print("Downloading the lastest public release from %s" %zip_url)
 
         import requests
