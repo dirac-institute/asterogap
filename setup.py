@@ -75,7 +75,7 @@ setup(
     description="AsteroGaP (Asteroid Gaussian Processes) is a Bayesian-based Gaussian Process model that seeks to fit sparsely-sampled asteroid light curves.",
     long_description=readme,
     author="Christina Willecke Lindberg",
-    author_email='cwlind@jhu.edu',
+    author_email='clindbe2@jhu.edu',
     url='https://github.com/dirac-institute/asterogap',
     python_requires='>={}'.format('.'.join(str(n) for n in min_version)),
     packages=find_packages(exclude=['docs', 'tests']),
