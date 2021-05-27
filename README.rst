@@ -14,6 +14,15 @@ AsteroGaP (Asteroid Gaussian Processes) is a Bayesian-based Gaussian Process mod
 * Free software: 3-clause BSD license
 * Documentation: (COMING SOON!) https://dirac-institute.github.io/asterogap.
 
+Installation
+----------
+``git clone https://github.com/dirac-institute/asterogap.git``
+
+``cd asterogap``
+
+``python setup.py install``
+
+
 Features
 --------
 
