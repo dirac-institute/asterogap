@@ -9,3 +9,6 @@ argparse
 h5py
 corner
 requests
+astropy
+gatspy
+textwrap
