@@ -11,4 +11,3 @@ corner
 requests
 astropy
 gatspy
-textwrap
