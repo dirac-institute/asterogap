@@ -69,35 +69,3 @@ The main powerhouse for this code is the Gaussian Process (GP) class, called GP 
 .. autofunction:: asterogap.GP.prior
 
 .. autofunction:: asterogap.GP.post_lnlikelihood
-
-----------------------
-Testing some stuff out
-----------------------
-
-We can run some actual python,
-
-.. ipython:: python
-
-   1 + 1
-
-or make a whole plot!
-
-.. plot::
-
-   import matplotlib.pyplot as plt
-   fig, ax = plt.subplots()
-   ax.plot([1, 1, 2, 3, 5, 8])
-
-
-.. math::
-
-    \int_0^a x\,dx = \frac{1}{2}a^2
-
-or you can write, the value of :math:`\pi` is 3.141592653....
-
-The :func:`example.refraction.snell` function encodes Snell's Law.
-The :func:`~example.refraction.snell` function encodes Snell's Law.
-
-
-
-
