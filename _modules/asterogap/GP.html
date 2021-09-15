@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>asterogap.GP &mdash; AsteroGaP 0.post49+g4d7fc72 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/plot_directive.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/copybutton.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/clipboard.min.js"></script>
+        <script src="../../_static/copybutton.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> AsteroGaP
+          </a>
+              <div class="version">
+                0.post49+g4d7fc72
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../AsteroGaP_Example_Notebook.html">AsteroGaP: A Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Prior_Plotting.html">Priors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../release-history.html">Release History</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../min_versions.html">Minimum Version of Python and NumPy</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">AsteroGaP</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      <li>asterogap.GP</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for asterogap.GP</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">george</span>
+<span class="kn">import</span> <span class="nn">emcee</span>
+<span class="kn">import</span> <span class="nn">scipy.stats</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+
+<div class="viewcode-block" id="GPFit"><a class="viewcode-back" href="../../usage.html#asterogap.GP.GPFit">[docs]</a><span class="k">class</span> <span class="nc">GPFit</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time_stamps</span><span class="p">,</span> <span class="n">flux</span><span class="p">,</span> <span class="n">flux_error</span><span class="p">,</span> <span class="n">kernel_long</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">time_stamps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flux</span> <span class="o">=</span> <span class="n">flux</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flux_err</span> <span class="o">=</span> <span class="n">flux_error</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kernel_long</span> <span class="o">=</span> <span class="n">kernel_long</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_pts</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">time_stamps</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">walker_params</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sampler</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lsp_period</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">kde</span> <span class="o">=</span> <span class="n">log_period_prior_kde</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="GPFit.set_params"><a class="viewcode-back" href="../../usage.html#asterogap.GP.GPFit.set_params">[docs]</a>    <span class="k">def</span> <span class="nf">set_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Calculates initial gp parameter values based on data.&quot;&quot;&quot;</span>
+
+        <span class="n">mean_flux</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flux</span><span class="p">)</span>
+
+        <span class="c1"># kernel1: long-term phase change</span>
+        <span class="n">log_amp_k1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flux</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">flux</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+        <span class="n">log_metric</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">5</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># kernel2: short-term periodic</span>
+        <span class="n">log_amp_k2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flux</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">flux</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+        <span class="n">gamma</span> <span class="o">=</span> <span class="mi">10</span>  <span class="c1"># ~10 normal gamma</span>
+        <span class="n">log_period</span> <span class="o">=</span> <span class="mi">0</span> <span class="c1"># 24 hours</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernel_long</span><span class="p">:</span>
+            <span class="n">parameters</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="n">mean_flux</span><span class="p">,</span>
+                <span class="s2">&quot;log_amp_k1&quot;</span><span class="p">:</span> <span class="n">log_amp_k1</span><span class="p">,</span>
+                <span class="s2">&quot;log_metric&quot;</span><span class="p">:</span> <span class="n">log_metric</span><span class="p">,</span>
+                <span class="s2">&quot;log_amp_k2&quot;</span><span class="p">:</span> <span class="n">log_amp_k2</span><span class="p">,</span>
+                <span class="s2">&quot;gamma&quot;</span><span class="p">:</span> <span class="n">gamma</span><span class="p">,</span>
+                <span class="s2">&quot;log_period&quot;</span><span class="p">:</span> <span class="n">log_period</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">parameters</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="n">mean_flux</span><span class="p">,</span>
+                <span class="s2">&quot;log_amp_k2&quot;</span><span class="p">:</span> <span class="n">log_amp_k2</span><span class="p">,</span>
+                <span class="s2">&quot;gamma&quot;</span><span class="p">:</span> <span class="n">gamma</span><span class="p">,</span>
+                <span class="s2">&quot;log_period&quot;</span><span class="p">:</span> <span class="n">log_period</span><span class="p">,</span>
+            <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">parameters</span>
+        <span class="k">return</span></div>
+
+<div class="viewcode-block" id="GPFit.set_walker_param_matrix"><a class="viewcode-back" href="../../usage.html#asterogap.GP.GPFit.set_walker_param_matrix">[docs]</a>    <span class="k">def</span> <span class="nf">set_walker_param_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nwalkers</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Creates a matrix of starting parameters for every walker.&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># create an array of all parameter values</span>
+            <span class="n">p_start</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+            <span class="c1">#cov_matrix = np.sqrt(np.diag(p_start) ** 2)</span>
+
+            <span class="n">p0</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">multivariate_normal</span><span class="o">.</span><span class="n">rvs</span><span class="p">(</span>
+                <span class="n">p_start</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">nwalkers</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">seed</span>
+            <span class="p">)</span>
+
+            <span class="c1"># p0 = np.random.multivariate_normal(</span>
+            <span class="c1">#     mean=p_start, cov=cov_matrix, size=(nwalkers)</span>
+            <span class="c1"># )</span>
+
+            <span class="c1"># randomly distributed starting period values from ~1hr to ~24hrs</span>
+            <span class="c1">#np.random.seed(seed)</span>
+
+            <span class="c1">#p0[:, -1] = np.random.normal(size=nwalkers) * 0.5 + np.log(4 / 24.0)</span>
+
+			<span class="c1">#calculate kde for period</span>
+            <span class="c1">#kde = log_period_prior_kde()</span>
+            <span class="c1">#x_grid = np.linspace(-8, 5, 1000) #min should be 30 minutes</span>
+            <span class="c1">#pdf = kde.evaluate(x_grid)</span>
+            <span class="n">p0_samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kde</span><span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="n">nwalkers</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="n">p0_samples</span><span class="p">)</span>
+
+            <span class="n">p0</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span>  <span class="n">p0_samples</span>
+
+            <span class="c1"># print(p0[:, -2])</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">walker_params</span> <span class="o">=</span> <span class="n">p0</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Please set parameter values first.&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span></div>
+
+<div class="viewcode-block" id="GPFit.set_gp_kernel"><a class="viewcode-back" href="../../usage.html#asterogap.GP.GPFit.set_gp_kernel">[docs]</a>    <span class="k">def</span> <span class="nf">set_gp_kernel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Sets up the Gaussian Process Kernel that is needed for george.&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernel_long</span><span class="p">:</span>
+            <span class="n">k1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;log_amp_k1&quot;</span><span class="p">])</span> <span class="o">*</span> <span class="n">george</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">ExpSquaredKernel</span><span class="p">(</span>
+                <span class="n">metric</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;log_metric&quot;</span><span class="p">])</span>
+            <span class="p">)</span>
+
+        <span class="n">k2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;log_amp_k2&quot;</span><span class="p">])</span> <span class="o">*</span> <span class="n">george</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">ExpSine2Kernel</span><span class="p">(</span>
+            <span class="n">gamma</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;gamma&quot;</span><span class="p">]),</span> <span class="n">log_period</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;log_period&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernel_long</span><span class="p">:</span>
+            <span class="n">kernel</span> <span class="o">=</span> <span class="n">k1</span> <span class="o">*</span> <span class="n">k2</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">kernel</span> <span class="o">=</span> <span class="n">k2</span>
+
+        <span class="n">gp</span> <span class="o">=</span> <span class="n">george</span><span class="o">.</span><span class="n">GP</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">fit_mean</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">])</span>
+        <span class="n">gp</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">flux_err</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp</span> <span class="o">=</span> <span class="n">gp</span>
+
+        <span class="k">return</span></div>
+
+<div class="viewcode-block" id="GPFit.run_emcee"><a class="viewcode-back" href="../../usage.html#asterogap.GP.GPFit.run_emcee">[docs]</a>    <span class="k">def</span> <span class="nf">run_emcee</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nwalkers</span><span class="p">,</span> <span class="n">niter</span><span class="p">,</span> <span class="n">threads</span><span class="p">,</span> <span class="n">burn_in</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Runs emcee&#39;s mcmc code.&quot;&quot;&quot;</span>
+
+        <span class="n">ndim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gp</span><span class="o">.</span><span class="n">vector_size</span>  <span class="c1">#ndim is 4 if not including longterm kernel</span>
+        <span class="n">sampler</span> <span class="o">=</span> <span class="n">emcee</span><span class="o">.</span><span class="n">EnsembleSampler</span><span class="p">(</span>
+            <span class="n">nwalkers</span><span class="p">,</span>
+            <span class="n">ndim</span><span class="p">,</span>
+            <span class="n">post_lnlikelihood</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">gp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">flux</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">flux_err</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kde</span><span class="p">],</span>
+            <span class="n">threads</span><span class="o">=</span><span class="n">threads</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># run steps for a burn-in</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">sampler</span><span class="o">.</span><span class="n">run_mcmc</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">walker_params</span><span class="p">,</span> <span class="n">burn_in</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">coords</span><span class="p">)</span>
+        <span class="n">sampler</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="n">sampler</span><span class="o">.</span><span class="n">run_mcmc</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">coords</span><span class="p">,</span> <span class="n">niter</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sampler</span> <span class="o">=</span> <span class="n">sampler</span>
+
+        <span class="k">return</span> <span class="n">sampler</span></div></div>
+
+
+<div class="viewcode-block" id="prior"><a class="viewcode-back" href="../../usage.html#asterogap.GP.prior">[docs]</a><span class="k">def</span> <span class="nf">prior</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">kde</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculated the log of the prior values, given parameter values.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    params : list</span>
+<span class="sd">        List of all kernel parameters</span>
+
+<span class="sd">    param[0] : float</span>
+<span class="sd">        mean (between 0 and 2)</span>
+
+<span class="sd">    param[1] : float</span>
+<span class="sd">        k1 log constant</span>
+
+<span class="sd">    param[2] : float</span>
+<span class="sd">        k1 log metric</span>
+
+<span class="sd">    param[3] : float</span>
+<span class="sd">        k2 log amplitude (between -10 and 10)</span>
+
+<span class="sd">    param[4] : float</span>
+<span class="sd">        log gamma (log gamma between ####0.1 and 40)</span>
+
+<span class="sd">    param[5] : float</span>
+<span class="sd">        log period (period between ####1h and 24hrs)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    sum_log_prior : int</span>
+<span class="sd">        sum of all log priors (-inf if a parameter is out of range)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># TODO: Improve documentation for prior ranges</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">)</span> <span class="o">==</span> <span class="mi">6</span><span class="p">:</span>
+
+        <span class="n">p_mean</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">logpdf</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="c1">#p_log_amp_k1 = scipy.stats.norm(np.log(2), np.log(10)).logpdf(params[1])</span>
+        <span class="n">p_log_amp_k1</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">logpdf</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">p_log_metric</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span><span class="o">.</span><span class="n">logpdf</span><span class="p">((</span><span class="n">params</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
+
+        <span class="n">p_log_amp_k2</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">logpdf</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+        <span class="n">p_log_gamma</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">logpdf</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="mi">4</span><span class="p">]))</span>
+
+        <span class="c1">#kde = log_period_prior_kde()</span>
+        <span class="c1">#if period is smaller than 1 minute or larger than a year, then -np inf</span>
+        <span class="k">if</span> <span class="n">params</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mf">7.27</span><span class="p">:</span>
+            <span class="n">p_log_period</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+<span class="c1">#        if params[5] &lt; -700:</span>
+<span class="c1">#            print(&quot;v smol %d&quot; %params[5])</span>
+<span class="c1">#            p_log_period = -np.inf</span>
+        <span class="k">elif</span> <span class="n">params</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">5.9</span><span class="p">:</span>
+            <span class="n">p_log_period</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="k">else</span><span class="p">:</span>
+        	<span class="n">p_log_period</span> <span class="o">=</span> <span class="n">kde</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="mi">5</span><span class="p">])</span> <span class="c1">#scipy.stats.norm(np.log(4.0 / 24.0), (12.0 / 24.0)).logpdf(params[5])</span>
+
+
+        <span class="n">sum_log_prior</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">p_mean</span>
+            <span class="o">+</span> <span class="n">p_log_amp_k1</span>
+            <span class="o">+</span> <span class="n">p_log_metric</span>
+            <span class="o">+</span> <span class="n">p_log_amp_k2</span>
+            <span class="o">+</span> <span class="n">p_log_gamma</span>
+            <span class="o">+</span> <span class="n">p_log_period</span>
+        <span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="n">p_mean</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">logpdf</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="n">p_log_amp_k2</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">logpdf</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">p_log_gamma</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">logpdf</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
+        <span class="c1">#kde = log_period_prior_kde()</span>
+        <span class="c1">#if period is smaller than 1 minute, then -np inf</span>
+        <span class="k">if</span> <span class="n">params</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mf">7.27</span><span class="p">:</span>
+            <span class="n">p_log_period</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="k">if</span> <span class="n">params</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">5.9</span><span class="p">:</span>
+            <span class="n">p_log_period</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="k">else</span><span class="p">:</span>
+        	<span class="n">p_log_period</span> <span class="o">=</span> <span class="n">kde</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="mi">5</span><span class="p">])</span> <span class="c1">#scipy.stats.norm(np.log(4.0 / 24.0), (12.0 / 24.0)).logpdf(params[5])</span>
+
+        <span class="n">sum_log_prior</span> <span class="o">=</span> <span class="n">p_mean</span> <span class="o">+</span> <span class="n">p_log_amp_k2</span> <span class="o">+</span> <span class="n">p_log_gamma</span> <span class="o">+</span> <span class="n">p_log_period</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">sum_log_prior</span><span class="p">)</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+
+    <span class="k">return</span> <span class="n">sum_log_prior</span></div>
+
+
+<span class="k">def</span> <span class="nf">logl</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">gp</span><span class="p">,</span> <span class="n">tsample</span><span class="p">,</span> <span class="n">fsample</span><span class="p">,</span> <span class="n">flux_err</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute log likelihood based on given parameters.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">gp</span><span class="o">.</span><span class="n">set_parameter_vector</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">gp</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">tsample</span><span class="p">,</span> <span class="n">flux_err</span><span class="p">)</span>
+        <span class="n">lnlike</span> <span class="o">=</span> <span class="n">gp</span><span class="o">.</span><span class="n">lnlikelihood</span><span class="p">(</span><span class="n">fsample</span><span class="p">)</span>
+
+    <span class="k">except</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">:</span>
+        <span class="n">lnlike</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1e25</span>
+
+    <span class="k">return</span> <span class="n">lnlike</span>
+
+
+<div class="viewcode-block" id="post_lnlikelihood"><a class="viewcode-back" href="../../usage.html#asterogap.GP.post_lnlikelihood">[docs]</a><span class="k">def</span> <span class="nf">post_lnlikelihood</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">gp</span><span class="p">,</span> <span class="n">tsample</span><span class="p">,</span> <span class="n">fsample</span><span class="p">,</span> <span class="n">flux_err</span><span class="p">,</span> <span class="n">kde</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the posterior likelihood from the log prior and</span>
+<span class="sd">    log likelihood.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    params : list</span>
+<span class="sd">        List of all kernel parameters</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ln_likelihood : float</span>
+<span class="sd">        The posterior, unless the posterior is infinite, in which case,</span>
+<span class="sd">        -1e25 will be returned instead.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># calculate the log_prior</span>
+    <span class="n">log_prior</span> <span class="o">=</span> <span class="n">prior</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">kde</span><span class="p">)</span>
+
+    <span class="c1"># return -inf if parameters are outside the priors</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isneginf</span><span class="p">(</span><span class="n">log_prior</span><span class="p">)</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">lnlike</span> <span class="o">=</span> <span class="n">logl</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">gp</span><span class="p">,</span> <span class="n">tsample</span><span class="p">,</span> <span class="n">fsample</span><span class="p">,</span> <span class="n">flux_err</span><span class="p">)</span>
+        <span class="n">ln_likelihood</span> <span class="o">=</span> <span class="n">lnlike</span> <span class="o">+</span> <span class="n">log_prior</span>
+
+    <span class="k">except</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">:</span>
+        <span class="n">ln_likelihood</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1e25</span>
+
+    <span class="k">return</span> <span class="n">ln_likelihood</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">ln_likelihood</span><span class="p">)</span> <span class="k">else</span> <span class="o">-</span><span class="mf">1e25</span></div>
+
+<span class="k">def</span> <span class="nf">read_lcdb</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">&#39;LC_SUM_PUB.TXT&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Read LCDB file tabulating periods and associated information.</span>
+<span class="sd">    LCDB available from:</span>
+<span class="sd">    http://www.minorplanet.info/lightcurvedatabase.html</span>
+<span class="sd">    Please see that page for citation information.</span>
+<span class="sd">    Warner, B.D., Harris, A.W., Pravec, P. (2009). Icarus 202, 134-146.</span>
+<span class="sd">    Updated &lt;Date of last update&gt;. http://www.MinorPlanet.info/lightcurvedatabase.html</span>
+<span class="sd">    The Asteroid Lightcurve Database is a listing of asteroid lightcurve parameters and other information,</span>
+<span class="sd">    e.g., estimated/measured diameters, absolute magnitudes (H), phase slope parameters (G), albedos, + more.</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filename : str, opt</span>
+<span class="sd">        The full path to the LCDB file (LC_SUM_PUB.TXT or similarly formatted files)</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;numberId&#39;</span><span class="p">,</span> <span class="s1">&#39;new&#39;</span><span class="p">,</span> <span class="s1">&#39;Name&#39;</span><span class="p">,</span> <span class="s1">&#39;Desig&#39;</span><span class="p">,</span> <span class="s1">&#39;family&#39;</span><span class="p">,</span> <span class="s1">&#39;Csource&#39;</span><span class="p">,</span> <span class="s1">&#39;class&#39;</span><span class="p">,</span> <span class="s1">&#39;Dsource&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;Dflag&#39;</span><span class="p">,</span> <span class="s1">&#39;diameter&#39;</span><span class="p">,</span><span class="s1">&#39;Hsource&#39;</span><span class="p">,</span> <span class="s1">&#39;H&#39;</span><span class="p">,</span> <span class="s1">&#39;Hband&#39;</span><span class="p">,</span> <span class="s1">&#39;Asource&#39;</span><span class="p">,</span> <span class="s1">&#39;Albedoflag&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;albedo&#39;</span><span class="p">,</span> <span class="s1">&#39;Pflag&#39;</span><span class="p">,</span> <span class="s1">&#39;period&#39;</span><span class="p">,</span> <span class="s1">&#39;Pdescr&#39;</span><span class="p">,</span><span class="s1">&#39;Ampflag&#39;</span><span class="p">,</span> <span class="s1">&#39;AmpMin&#39;</span><span class="p">,</span> <span class="s1">&#39;AmpMax&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;U&#39;</span><span class="p">,</span> <span class="s1">&#39;notes&#39;</span><span class="p">,</span> <span class="s1">&#39;binary&#39;</span><span class="p">,</span> <span class="s1">&#39;priv&#39;</span> <span class="p">,</span> <span class="s1">&#39;pole&#39;</span><span class="p">,</span> <span class="s1">&#39;survA&#39;</span><span class="p">]</span>
+    <span class="n">colspecs</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">7</span><span class="p">),</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">),</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">40</span><span class="p">),</span> <span class="p">(</span><span class="mi">41</span><span class="p">,</span> <span class="mi">61</span><span class="p">),</span> <span class="p">(</span><span class="mi">62</span><span class="p">,</span> <span class="mi">70</span><span class="p">),</span> <span class="p">(</span><span class="mi">71</span><span class="p">,</span> <span class="mi">72</span><span class="p">),</span> <span class="p">(</span><span class="mi">73</span><span class="p">,</span> <span class="mi">78</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">79</span><span class="p">,</span> <span class="mi">80</span><span class="p">),</span> <span class="p">(</span><span class="mi">81</span><span class="p">,</span> <span class="mi">82</span><span class="p">),</span> <span class="p">(</span><span class="mi">83</span><span class="p">,</span> <span class="mi">92</span><span class="p">),</span> <span class="p">(</span><span class="mi">93</span><span class="p">,</span> <span class="mi">94</span><span class="p">),</span> <span class="p">(</span><span class="mi">95</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="p">(</span><span class="mi">101</span><span class="p">,</span> <span class="mi">102</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">104</span><span class="p">,</span> <span class="mi">105</span><span class="p">),</span> <span class="p">(</span><span class="mi">106</span><span class="p">,</span> <span class="mi">107</span><span class="p">),</span> <span class="p">(</span><span class="mi">108</span><span class="p">,</span> <span class="mi">114</span><span class="p">),</span> <span class="p">(</span><span class="mi">115</span><span class="p">,</span> <span class="mi">116</span><span class="p">),</span> <span class="p">(</span><span class="mi">117</span><span class="p">,</span> <span class="mi">130</span><span class="p">),</span> <span class="p">(</span><span class="mi">131</span><span class="p">,</span> <span class="mi">146</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">147</span><span class="p">,</span> <span class="mi">148</span><span class="p">),</span> <span class="p">(</span><span class="mi">149</span><span class="p">,</span> <span class="mi">153</span><span class="p">),</span> <span class="p">(</span><span class="mi">154</span><span class="p">,</span> <span class="mi">158</span><span class="p">),</span> <span class="p">(</span><span class="mi">159</span><span class="p">,</span> <span class="mi">161</span><span class="p">),(</span><span class="mi">162</span><span class="p">,</span> <span class="mi">167</span><span class="p">),</span> <span class="p">(</span><span class="mi">168</span><span class="p">,</span> <span class="mi">171</span><span class="p">),</span>
+                <span class="p">(</span><span class="mi">172</span><span class="p">,</span> <span class="mi">175</span><span class="p">),</span> <span class="p">(</span><span class="mi">176</span><span class="p">,</span> <span class="mi">179</span><span class="p">),</span> <span class="p">(</span><span class="mi">180</span><span class="p">,</span> <span class="mi">182</span><span class="p">),</span> <span class="p">(</span><span class="mi">183</span><span class="p">,</span> <span class="mi">184</span><span class="p">)]</span>
+    <span class="n">lcdata</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_fwf</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">index_col</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">skiprows</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span> <span class="n">colspecs</span><span class="o">=</span><span class="n">colspecs</span><span class="p">)</span>
+    <span class="n">objId</span> <span class="o">=</span> <span class="n">lcdata</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s1">&#39;numberId == numberId&#39;</span><span class="p">)[</span><span class="s1">&#39;numberId&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;str&#39;</span><span class="p">)</span>
+    <span class="n">objId2</span> <span class="o">=</span> <span class="n">lcdata</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s1">&#39;numberId != numberId and Desig == Desig&#39;</span><span class="p">)[</span><span class="s1">&#39;Desig&#39;</span><span class="p">]</span>
+    <span class="n">objId3</span> <span class="o">=</span> <span class="n">lcdata</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s1">&#39;numberId != numberId and Desig != Desig&#39;</span><span class="p">)[</span><span class="s1">&#39;Name&#39;</span><span class="p">]</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">objId</span><span class="p">,</span> <span class="n">objId2</span><span class="p">,</span> <span class="n">objId3</span><span class="p">])</span>
+    <span class="n">lcdata</span> <span class="o">=</span> <span class="n">lcdata</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">to_frame</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;objId&#39;</span><span class="p">),</span> <span class="n">left_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">right_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">lcdata</span><span class="p">[</span><span class="s1">&#39;Frequency&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">/</span><span class="n">lcdata</span><span class="o">.</span><span class="n">period</span>
+    <span class="c1"># Map flags to ints.</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">lcdata</span><span class="o">.</span><span class="n">new</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">tmp</span> <span class="o">==</span> <span class="s1">&#39;*&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">lcdata</span><span class="o">.</span><span class="n">new</span> <span class="o">=</span> <span class="n">tmp</span>
+    <span class="c1">#tmp = lcdata.sparse.values</span>
+    <span class="c1">#tmp = np.where(tmp == &#39;Y&#39;, 1, 0)</span>
+    <span class="c1">#lcdata.sparse = tmp</span>
+    <span class="c1">#tmp = lcdata.widefield.valuesCometGPs/data/LCLIST_PUB_2019JAN/LC_SUM_PUB.TXT&quot;)#</span>
+    <span class="c1">#tmp = np.where(tmp == &#39;Y&#39;, 1, 0)</span>
+    <span class="c1">#lcdata.widefield = tmp</span>
+    <span class="k">return</span> <span class="n">lcdata</span>
+
+<span class="k">def</span> <span class="nf">log_period_prior_kde</span><span class="p">(</span><span class="n">lcdb_file</span> <span class="o">=</span> <span class="s2">&quot;LCLIST_PUB_CURRENT/LC_SUM_PUB.TXT&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Calculates the log period prior distribution based on the</span>
+<span class="sd">	current asteroid rotational periods documented.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="kn">from</span> <span class="nn">os.path</span> <span class="kn">import</span> <span class="n">expanduser</span>
+    <span class="n">userhome</span> <span class="o">=</span> <span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">)</span>
+
+    <span class="n">file_loc</span> <span class="o">=</span> <span class="n">userhome</span> <span class="o">+</span> <span class="s2">&quot;/asterogap/data/&quot;</span>
+
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">file_loc</span> <span class="o">+</span> <span class="n">lcdb_file</span><span class="p">):</span>
+		<span class="c1"># if this command doesn&#39;t work, you can always got to</span>
+		<span class="c1"># http://www.minorplanet.info/lightcurvedatabase.html</span>
+		<span class="c1"># download and unzip the latest public release file</span>
+		<span class="c1"># and then place that file into the data folder of this package</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> is not found.&quot;</span> <span class="o">%</span><span class="n">lcdb_file</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Downloading the lastest public release from http://www.minorplanet.info/lightcurvedatabase.html.&quot;</span><span class="p">)</span>
+
+        <span class="kn">import</span> <span class="nn">requests</span>
+        <span class="kn">import</span> <span class="nn">zipfile</span>
+
+        <span class="n">zip_url</span> <span class="o">=</span> <span class="s2">&quot;http://www.minorplanet.info/datazips/LCLIST_PUB_CURRENT.zip&quot;</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">zip_url</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;test&quot;</span><span class="p">)</span>
+
+		<span class="c1"># send a HTTP request to the server and save</span>
+		<span class="c1"># the HTTP response in a response object called r</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;LCLIST_PUB_CURRENT.zip&quot;</span><span class="p">,</span><span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+			<span class="c1"># write the contents of the response (r.content)</span>
+			<span class="c1"># to a new file in binary mode.</span>
+			<span class="c1"># should take a few seconds</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="s2">&quot;LCLIST_PUB_CURRENT.zip&quot;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">zip_ref</span><span class="p">:</span>
+            <span class="n">zip_ref</span><span class="o">.</span><span class="n">extractall</span><span class="p">(</span><span class="s2">&quot;../data/LCLIST_PUB_CURRENT&quot;</span><span class="p">)</span>
+
+		<span class="c1"># go ahead and delete the zip file</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">lcdb_file</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s2">&quot;LCLIST_PUB_CURRENT.zip&quot;</span><span class="p">)</span>
+
+    <span class="n">lcdb</span> <span class="o">=</span> <span class="n">read_lcdb</span><span class="p">(</span><span class="n">file_loc</span> <span class="o">+</span> <span class="n">lcdb_file</span><span class="p">)</span>
+	<span class="c1"># drop any entries that have NAN for a period value</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lcdb</span><span class="o">.</span><span class="n">period</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="o">/</span><span class="mf">24.</span><span class="p">)</span>
+
+    <span class="n">kde</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">gaussian_kde</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">bw_method</span><span class="o">=</span><span class="mf">0.2</span> <span class="o">/</span> <span class="n">x</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">kde</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2019, UW DIRAC Institute.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

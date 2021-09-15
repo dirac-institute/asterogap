@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usage &mdash; AsteroGaP 0.post49+g4d7fc72 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/plot_directive.css" type="text/css" />
+      <link rel="stylesheet" href="_static/copybutton.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/clipboard.min.js"></script>
+        <script src="_static/copybutton.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="AsteroGaP: A Guide" href="AsteroGaP_Example_Notebook.html" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> AsteroGaP
+          </a>
+              <div class="version">
+                0.post49+g4d7fc72
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#reading-in-data">Reading in Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#prepping-mcmc">Prepping MCMC</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#setting-the-kernel">Setting the kernel</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="AsteroGaP_Example_Notebook.html">AsteroGaP: A Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Prior_Plotting.html">Priors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="release-history.html">Release History</a></li>
+<li class="toctree-l1"><a class="reference internal" href="min_versions.html">Minimum Version of Python and NumPy</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">AsteroGaP</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Usage</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/usage.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast.container,
+.nboutput.nblast.container {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast.container + .nbinput.container {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<section id="usage">
+<h1>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h1>
+<p>Start by making sure that you have AsteroGaP installed.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">asterogap</span>
+</pre></div>
+</div>
+<p>If nothing yells at you, then you’re good and can proceed. If something does seem upset, go back and reinstall.</p>
+<section id="reading-in-data">
+<h2>Reading in Data<a class="headerlink" href="#reading-in-data" title="Permalink to this headline">¶</a></h2>
+<p>The code runs primarily on the command line, where all you really need is a file with columns of time, fluxes (or magnitudes), and flux errors (or magnitude errors). This documentation will go into how you can fully customize your input and how it will effect the run.</p>
+<p>By default, the code will assume that the first 3 columns correspond to time, flux, and flux errors respectively and that there is no header. If your file does have a header, you need to specify the columns by including a <code class="docutils literal notranslate"><span class="pre">-c</span></code> or <code class="docutils literal notranslate"><span class="pre">--columns</span></code> and listing the names of the columns afterwards (again, in the order of time, flux, and flux error respectively). You do not need to put the names in quotations.</p>
+<p><code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">python</span> <span class="pre">run_gp</span> <span class="pre">-f</span> <span class="pre">[filename]</span> <span class="pre">-d</span> <span class="pre">[datadir]</span> <span class="pre">-c</span> <span class="pre">[time]</span> <span class="pre">[flux]</span> <span class="pre">[flux</span> <span class="pre">error]</span></code></p>
+<p>In order to read in the data file correctly, the code needs to know that the delimeter of your data is (e.i. is your data separated by whitespace ” ” or by commas “,”). The code will assume commas by default but if your data is seperated by whitespace, then you can indicate that on the command line with a <code class="docutils literal notranslate"><span class="pre">-ws</span></code> or <code class="docutils literal notranslate"><span class="pre">--whitespace</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">python</span> <span class="pre">run_gp</span> <span class="pre">-f</span> <span class="pre">[filename]</span> <span class="pre">-d</span> <span class="pre">[datadir]</span> <span class="pre">-ws</span></code></p>
+</section>
+<section id="prepping-mcmc">
+<h2>Prepping MCMC<a class="headerlink" href="#prepping-mcmc" title="Permalink to this headline">¶</a></h2>
+<p>The code utilizes MCMC methods to generate results. For more information on MCMC and the package used here, check out <a class="reference external" href="https://emcee.readthedocs.io/en/stable/">Dan Foreman-Mackey’s emcee paper</a>.</p>
+<p>There are a couple different parameters that will greatly effect how your MCMC code will run.</p>
+<ul class="simple">
+<li><p>Walkers/chains (default: 100)</p></li>
+<li><p>Burn-in iterations (default: 2000): the number of steps the MCMC should run through in order to ensure that the chains have converged properly (or the number of iterations to remove from the head of the MCMC chains).</p></li>
+<li><p>Iterations (default: 1000)</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">python</span> <span class="pre">run_gp</span> <span class="pre">-f</span> <span class="pre">[filename]</span> <span class="pre">-d</span> <span class="pre">[datadir]</span> <span class="pre">-w</span> <span class="pre">[nwalkers]</span> <span class="pre">-b</span> <span class="pre">[burn_in]</span> <span class="pre">-i</span> <span class="pre">[niter]</span></code></p>
+<p>All of these effect how long it will take for your code to run, with more steps or walkers taking more time.</p>
+<p>If you want to multithread the run, you can set the number of threads for the emcee code to use. The default is 1. This is great if you have access to high-performance resources, but if you’re working on a personal computer, just make sure not to set the thread number to more than what your machine can handle.</p>
+<p><code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">python</span> <span class="pre">run_gp</span> <span class="pre">-f</span> <span class="pre">[filename]</span> <span class="pre">-d</span> <span class="pre">[datadir]</span> <span class="pre">-w</span> <span class="pre">[nwalkers]</span> <span class="pre">-b</span> <span class="pre">[burn_in]</span> <span class="pre">-i</span> <span class="pre">[niter]</span> <span class="pre">-t</span> <span class="pre">[threads]</span></code></p>
+</section>
+<section id="setting-the-kernel">
+<h2>Setting the kernel<a class="headerlink" href="#setting-the-kernel" title="Permalink to this headline">¶</a></h2>
+<p>For the Gaussian Process kernel, the priors are pre-encoded, but there is the option of setting up a long-term lightcurve profile adjustment kernel. This additional kernel is supposed to account for the gradual change in the lightcurve profile that is naturally seen in most asteroids. Without it, the kernel remains strictly periodic with no fine adjustments to the amplitudes.</p>
+<p>This kernel is by default included in the setup, but you can omit it by indicating it on the command line with <code class="docutils literal notranslate"><span class="pre">-k</span></code> or <code class="docutils literal notranslate"><span class="pre">--kernel</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">$</span> <span class="pre">python</span> <span class="pre">run_gp</span> <span class="pre">-f</span> <span class="pre">[filename]</span> <span class="pre">-d</span> <span class="pre">[datadir]</span> <span class="pre">-k</span></code></p>
+<dl class="py function">
+<dt class="sig sig-object py" id="asterogap.run_gp.read_data">
+<span class="sig-prename descclassname"><span class="pre">asterogap.run_gp.</span></span><span class="sig-name descname"><span class="pre">read_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datadir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cols</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">whitespace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/asterogap/run_gp.html#read_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asterogap.run_gp.read_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read in light curve data from asteroid.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="asterogap.run_gp.write_data">
+<span class="sig-prename descclassname"><span class="pre">asterogap.run_gp.</span></span><span class="sig-name descname"><span class="pre">write_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampler</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">asteroid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nwalkers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">niter</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">burn_in</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/asterogap/run_gp.html#write_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asterogap.run_gp.write_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write the sampler results as an HDF5 file,
+with all the other info you might want.</p>
+</dd></dl>
+
+<p>The main powerhouse for this code is the Gaussian Process (GP) class, called GP Fit. With this class, we store all the information regarding the input data, the parameters, the kernel settings, and the results from the MCMC runs.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="asterogap.GP.GPFit">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">asterogap.GP.</span></span><span class="sig-name descname"><span class="pre">GPFit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_stamps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_error</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_long</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/asterogap/GP.html#GPFit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asterogap.GP.GPFit" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="asterogap.GP.GPFit.run_emcee">
+<span class="sig-name descname"><span class="pre">run_emcee</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nwalkers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">niter</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threads</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">burn_in</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/asterogap/GP.html#GPFit.run_emcee"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asterogap.GP.GPFit.run_emcee" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs emcee’s mcmc code.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="asterogap.GP.GPFit.set_gp_kernel">
+<span class="sig-name descname"><span class="pre">set_gp_kernel</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/asterogap/GP.html#GPFit.set_gp_kernel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asterogap.GP.GPFit.set_gp_kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets up the Gaussian Process Kernel that is needed for george.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="asterogap.GP.GPFit.set_params">
+<span class="sig-name descname"><span class="pre">set_params</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/asterogap/GP.html#GPFit.set_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asterogap.GP.GPFit.set_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates initial gp parameter values based on data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="asterogap.GP.GPFit.set_walker_param_matrix">
+<span class="sig-name descname"><span class="pre">set_walker_param_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nwalkers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/asterogap/GP.html#GPFit.set_walker_param_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asterogap.GP.GPFit.set_walker_param_matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a matrix of starting parameters for every walker.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="asterogap.GP.prior">
+<span class="sig-prename descclassname"><span class="pre">asterogap.GP.</span></span><span class="sig-name descname"><span class="pre">prior</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kde</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/asterogap/GP.html#prior"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asterogap.GP.prior" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculated the log of the prior values, given parameter values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>params</strong><span class="classifier">list</span></dt><dd><p>List of all kernel parameters</p>
+</dd>
+<dt><strong>param[0]</strong><span class="classifier">float</span></dt><dd><p>mean (between 0 and 2)</p>
+</dd>
+<dt><strong>param[1]</strong><span class="classifier">float</span></dt><dd><p>k1 log constant</p>
+</dd>
+<dt><strong>param[2]</strong><span class="classifier">float</span></dt><dd><p>k1 log metric</p>
+</dd>
+<dt><strong>param[3]</strong><span class="classifier">float</span></dt><dd><p>k2 log amplitude (between -10 and 10)</p>
+</dd>
+<dt><strong>param[4]</strong><span class="classifier">float</span></dt><dd><p>log gamma (log gamma between ####0.1 and 40)</p>
+</dd>
+<dt><strong>param[5]</strong><span class="classifier">float</span></dt><dd><p>log period (period between ####1h and 24hrs)</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>sum_log_prior</strong><span class="classifier">int</span></dt><dd><p>sum of all log priors (-inf if a parameter is out of range)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="asterogap.GP.post_lnlikelihood">
+<span class="sig-prename descclassname"><span class="pre">asterogap.GP.</span></span><span class="sig-name descname"><span class="pre">post_lnlikelihood</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tsample</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fsample</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_err</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kde</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/asterogap/GP.html#post_lnlikelihood"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#asterogap.GP.post_lnlikelihood" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the posterior likelihood from the log prior and
+log likelihood.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>params</strong><span class="classifier">list</span></dt><dd><p>List of all kernel parameters</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>ln_likelihood</strong><span class="classifier">float</span></dt><dd><p>The posterior, unless the posterior is infinite, in which case,
+-1e25 will be returned instead.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="AsteroGaP_Example_Notebook.html" class="btn btn-neutral float-right" title="AsteroGaP: A Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2019, UW DIRAC Institute.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
