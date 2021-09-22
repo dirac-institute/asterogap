@@ -15,7 +15,7 @@ By utilizing a more flexible Gaussian Process framework for modeling asteroid li
 
 
 Installation
-----------
+------------
 
 At the command line (via pip):
 
